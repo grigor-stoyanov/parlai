@@ -32,7 +32,9 @@ A local voice interface for talking to AI.
 - Don't add a dependency, abstraction or config option without a concrete need right now.
 - Don't write clever or dense code that needs a long explanation.
 - Don't mock hardware I/O in tests that prove nothing.
-- Don't hide errors or claim something works without running it.
+- Don't run tests (pytest or any test command) yourself. A Stop hook already runs the relevant tests after code changes and the `test-report` skill reports them. See `.claude/hooks/` and `.claude/skills/test-report/`.
+- Don't fix, analyze or re-run on a test report unless asked. Report it and wait.
+- Don't hide errors or claim something works without running it (run the app itself; tests are the hook's job).
 - Don't commit, delete or restructure anything without asking.
 - Don't dump large amounts of code at once; keep each change reviewable.
 

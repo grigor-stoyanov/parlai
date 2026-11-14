@@ -8,3 +8,4 @@ __pycache__/
 *.flac
 models/
 .env
+.claude/.edited-files
