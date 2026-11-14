@@ -8,7 +8,7 @@
             (sounddevice)  (Kokoro/Piper)                                    (Phase 2)
 ```
 
-The app is an asyncio service; the packages talk through a small event bus. Events: `partial_text`, `final_text`, `speech_start`, `speech_end`, `ai_text_chunk`.
+The app runs as a few plain threads (mic, recogniser, server); the packages talk through a small event bus built on thread-safe `queue.Queue`. Events: `partial_text`, `final_text`, `speech_start`, `speech_end`, `ai_text_chunk`.
 
 ## Packages (in `src/`)
 Each package does one job and does not orchestrate. The root `main.py` is the main loop that wires them together. Packages and modules exist as docstring-only placeholders; each is filled in at its milestone.
@@ -16,7 +16,7 @@ Each package does one job and does not orchestrate. The root `main.py` is the ma
 | Package | Job | Interface | Starts at |
 |---|---|---|---|
 | `speech_to_text` | mic capture, VAD, Whisper | `STTEngine.transcribe_stream(audio_chunks) -> AsyncIterator[Transcript]` | M1 |
-| `event_bus` | small asyncio bus the others talk through | `publish(event)`, `subscribe()` | M3 |
+| `event_bus` | small thread-safe bus the others talk through | `publish(event)`, `subscribe()` | M3 |
 | `text_delivery` | sinks: PTY injection, WebSocket to browser | `Sink.emit(event)` | M3 |
 | `text_to_speech` | text cleaning, TTS engine, playback | `TTSEngine.synthesize(text) -> AsyncIterator[bytes]` | M6 |
 | `ai_output_capture` | sources: PTY tee, browser DOM | `Source` yields AI output text | M6 |
@@ -52,6 +52,6 @@ Each new package must be added to `packages = [...]` under `[tool.hatch.build.ta
 
 ## Conventions
 - Python 3.12, type hints, `ruff` for lint and format.
-- Async-first; keep the audio callback thread free of blocking work and hand off via queues.
+- Threads and `queue.Queue`, no asyncio unless a real need appears. Keep the audio callback thread free of blocking work and hand off via queues.
 - Never log raw audio or transcripts at INFO level.
 - Commands: `uv sync`, `uv run python main.py`, `uv run pytest`, `uv run ruff check .`

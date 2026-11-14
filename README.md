@@ -38,7 +38,7 @@ uv run ruff format .     # format
 main.py                  main loop that wires the packages together
 src/
   speech_to_text/        mic capture, voice activity detection, Whisper
-  event_bus/             small asyncio bus the packages talk through
+  event_bus/             small thread-safe bus the packages talk through
   text_delivery/         send text to a terminal (PTY) or browser input
   text_to_speech/        speak AI replies (Phase 2)
   ai_output_capture/     read AI replies from a terminal or page (Phase 2)

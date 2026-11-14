@@ -6,11 +6,11 @@
 | Mic/speaker I/O | `sounddevice` (+ `portaudio`) | Simple; works with PipeWire |
 | VAD | `silero-vad` (or `webrtcvad`) | Accurate, light |
 | STT | `faster-whisper` | Local, fast, streaming-friendly. Alternatives: `whisper.cpp`, `RealtimeSTT`, Vosk (lighter, less accurate) |
-| Server/WebSocket | `websockets` or `FastAPI` + `uvicorn` | Browser transport |
+| Server/WebSocket | `websockets` (its thread-based sync API) | Browser transport. Avoids asyncio; check thread-safety of sending in M3 |
 | Terminal injection | stdlib `pty` / `ptyprocess`, `pexpect` | Wrap the CLI in a PTY and write to its stdin |
 | TTS (Phase 2) | `kokoro` or `piper-tts` | Local, good quality on CPU |
 | Config/CLI | stdlib `argparse` for now | Swap to `typer` only if the CLI grows |
-| Tests | `pytest`, `pytest-asyncio` | |
+| Tests | `pytest` | |
 
 System packages (Arch): `portaudio`, `pipewire-alsa`, optionally CUDA/`cudnn` for GPU.
 
