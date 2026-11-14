@@ -9,6 +9,7 @@
 | Server/WebSocket | `websockets` (its thread-based sync API) | Browser transport. Avoids asyncio; check thread-safety of sending in M3 |
 | Terminal injection | stdlib `pty` / `ptyprocess`, `pexpect` | Wrap the CLI in a PTY and write to its stdin |
 | TTS (Phase 2) | `kokoro` or `piper-tts` | Local, good quality on CPU |
+| Env file | `python-dotenv` | Loads `.env` into the environment; `config` validates the values at startup |
 | Config/CLI | stdlib `argparse` for now | Swap to `typer` only if the CLI grows |
 | Tests | `pytest` | |
 

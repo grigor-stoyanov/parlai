@@ -15,6 +15,7 @@ Each package does one job and does not orchestrate. The root `main.py` is the ma
 
 | Package | Job | Interface | Starts at |
 |---|---|---|---|
+| `config` | settings from environment variables (`PARLAI_*`), validated at startup against coded rules in `config/rules.py` | `load_settings(env) -> Settings` | M1 |
 | `speech_to_text` | mic capture, VAD, Whisper | `STTEngine.transcribe_stream(audio_chunks) -> AsyncIterator[Transcript]` | M1 |
 | `event_bus` | small thread-safe bus the others talk through | `publish(event)`, `subscribe()` | M3 |
 | `text_delivery` | sinks: PTY injection, WebSocket to browser | `Sink.emit(event)` | M3 |
@@ -29,6 +30,7 @@ parlai/
 ├── pyproject.toml
 ├── main.py                 # main loop; run with `uv run python main.py`
 ├── src/
+│   ├── config/             # settings
 │   ├── speech_to_text/     # audio_capture, vad, whisper_engine
 │   ├── event_bus/          # events, bus
 │   ├── text_delivery/      # terminal_sink, websocket_sink

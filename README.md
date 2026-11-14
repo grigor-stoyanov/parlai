@@ -16,6 +16,10 @@ Requires [uv](https://docs.astral.sh/uv/). It installs the pinned Python 3.12 fo
 uv sync
 ```
 
+## Configure
+
+Optional. Copy `.env.example` to `.env` and change the values (audio settings, recordings folder). Invalid values stop the app at startup with a message naming the variable and the broken rule (codes `PARLAI-E001` to `E103`, defined in `src/config/rules.py`). Allowed: sample rate 8000 or 16000, block size 256 or 512 to match, 1 channel.
+
 ## Run
 
 ```bash
@@ -37,6 +41,7 @@ uv run ruff format .     # format
 ```
 main.py                  main loop that wires the packages together
 src/
+  config/                settings from PARLAI_* environment variables, checked at startup
   speech_to_text/        mic capture, voice activity detection, Whisper
   event_bus/             small thread-safe bus the packages talk through
   text_delivery/         send text to a terminal (PTY) or browser input
