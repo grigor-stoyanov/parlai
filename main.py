@@ -8,13 +8,16 @@ import queue
 import time
 
 from event_bus.bus import EventBus
-from event_bus.events import FinalText, PartialText
+from event_bus.events import SpeechEnd, SpeechStart
+from speech_to_text.utterance_segmenter import UtteranceSegmenter
+
+MOCK_AUDIO = "..SSS..SS......SS....IMASNAKE"
 
 
-def drain(name: str, inbox: queue.Queue) -> None:
-    """Print everything currently waiting in an inbox."""
-    while not inbox.empty():
-        print(f"{name} got: {inbox.get_nowait()}")
+def print_events(*inboxes: queue.Queue) -> None:
+    for inbox in inboxes:
+        while not inbox.empty():
+            print(f"   -> {inbox.get_nowait()}")
 
 
 def main(argv: list[str] | None = None, pause: float = 0.5) -> None:
@@ -23,21 +26,15 @@ def main(argv: list[str] | None = None, pause: float = 0.5) -> None:
     parser.parse_args(argv)
 
     bus = EventBus()
+    starts = bus.subscribe(SpeechStart)
+    ends = bus.subscribe(SpeechEnd)
+    segmenter = UtteranceSegmenter(bus)
 
-    terminal = bus.subscribe(FinalText)
-    browser = bus.subscribe(PartialText)
-
-    for text in ["Hel", "Hello", "Hello wor"]:
-        print(f"published PartialText({text!r})")
-        bus.publish(PartialText(text))
+    for i, chunk in enumerate(MOCK_AUDIO):
+        segmenter.feed(chunk == "S")
+        print(f"{i:2} {chunk}")
+        print_events(starts, ends)
         time.sleep(pause)
-    print("published FinalText('Hello world')")
-    bus.publish(FinalText("Hello world"))
-    time.sleep(pause)
-
-    print("--- subscribers start reading ---")
-    drain("browser", browser)
-    drain("terminal", terminal)
 
 
 if __name__ == "__main__":

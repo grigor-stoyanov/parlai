@@ -9,3 +9,4 @@ __pycache__/
 models/
 .env
 .claude/.edited-files
+TODO.md

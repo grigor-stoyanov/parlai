@@ -1,22 +1,28 @@
 from main import main
 
 
-def test_each_subscriber_gets_only_its_own_event_type(capsys):
+def run_main(capsys):
     main([], pause=0)
-
-    lines = capsys.readouterr().out.splitlines()
-
-    assert "terminal got: FinalText(text='Hello world')" in lines
-    assert "browser got: PartialText(text='Hello')" in lines
-    assert not any(line.startswith("terminal got: PartialText") for line in lines)
-    assert not any(line.startswith("browser got: FinalText") for line in lines)
+    return capsys.readouterr().out.splitlines()
 
 
-def test_nothing_is_read_until_publishing_is_done(capsys):
-    main([], pause=0)
+def test_two_utterances_produce_two_starts_and_two_ends(capsys):
+    lines = run_main(capsys)
 
-    lines = capsys.readouterr().out.splitlines()
-    first_read = next(i for i, line in enumerate(lines) if "got:" in line)
-    last_publish = max(i for i, line in enumerate(lines) if line.startswith("published"))
+    events = [line.strip() for line in lines if "->" in line]
 
-    assert last_publish < first_read
+    assert events == ["-> SpeechStart()", "-> SpeechEnd()", "-> SpeechStart()", "-> SpeechEnd()"]
+
+
+def test_events_appear_right_after_the_chunk_that_caused_them(capsys):
+    lines = run_main(capsys)
+
+    assert lines[lines.index(" 2 S") + 1] == "   -> SpeechStart()"
+    assert lines[lines.index("11 .") + 1] == "   -> SpeechEnd()"
+
+
+def test_a_short_gap_does_not_publish_an_end(capsys):
+    lines = run_main(capsys)
+
+    assert lines[lines.index(" 5 .") + 1] == " 6 ."
+    assert lines[lines.index(" 6 .") + 1] == " 7 S"

@@ -22,6 +22,7 @@ A local voice interface for talking to AI.
 - Comment the why, especially for non-obvious audio, threading and PTY details.
 - End each step with something we can run, plus the expected output.
 - Test logic that can break quietly (text cleaning, utterance segmentation).
+- Name test files `tests/test_<package>*.py` (e.g. `test_speech_to_text_utterance.py`) so the test hook can find them.
 - Report honestly: what works, what was only partly tested, what is unknown.
 - Prefer the standard library when it is good enough.
 - Update `docs/` in the same step as any decision that changes it.
