@@ -1,6 +1,6 @@
 # System requirements
 
-What a machine needs to run parlai. The built binaries and the project never install drivers, sound libraries or GPU libraries for you: parlai connects to what your machine already has, and its log says what is missing. What parlai should do (features and status) is in [project-requirements.md](project-requirements.md).
+What a machine needs to run parlai. The built binaries and the project never install drivers, sound libraries or GPU libraries for you: parlai connects to what your machine already has, and its log says what is missing.
 
 **Tested on:** Arch Linux (x86_64) with PipeWire, Python 3.12, 16 CPU cores, 30 GB RAM, NVIDIA RTX 5070 Laptop GPU (8 GB), driver 620.70.06. Everything marked "untested" below is what we expect to work but have not run.
 

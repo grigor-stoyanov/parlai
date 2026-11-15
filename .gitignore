@@ -15,3 +15,6 @@ dist/
 
 logs/
 !tests/fixtures/*.wav
+
+# private working notes, not for the public repo
+docs/project-requirements.md

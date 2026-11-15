@@ -6,7 +6,7 @@ Everything runs locally: no audio leaves your machine.
 
 ## Status
 
-Speech to text works in the terminal: it listens to your microphone, detects when you speak, and prints what you said, on the GPU if one works and otherwise the CPU. Not built yet: live partial text while you speak, sending text into another terminal or a browser input, and spoken AI replies (the speech engine is still a mock). See the status of every feature in [docs/project-requirements.md](docs/project-requirements.md), what a machine needs in [docs/requirements.md](docs/requirements.md), and the milestones in [docs/architecture.md](docs/architecture.md).
+Speech to text works in the terminal: it listens to your microphone, detects when you speak, and prints what you said, on the GPU if one works and otherwise the CPU. Not built yet: live partial text while you speak, sending text into another terminal or a browser input, and spoken AI replies (the speech engine is still a mock). See what a machine needs in [docs/requirements.md](docs/requirements.md), and the milestones in [docs/architecture.md](docs/architecture.md).
 
 ## Setup
 
@@ -55,7 +55,7 @@ The log should then say `loaded CUDA libraries from the cuda extra` and `model l
 
 If they are missing or fail to load, the log says why and the app runs on the CPU. AMD, Intel and Apple GPUs are not supported for recognition and always use the CPU.
 
-The built binaries do not include CUDA (it is large, and like drivers it belongs to the machine). To use an NVIDIA GPU with a binary, the CUDA 12 libraries must already be findable on the machine: on Linux install cuBLAS 12 and cuDNN 9 so the system loader sees them (or start it as `LD_LIBRARY_PATH=/folder/with/the/libs ./parlai/parlai`), on Windows install them and put their `bin` folders on `PATH`. I have not tested this on Windows.
+The built binaries do not include CUDA (it is large, and like drivers it belongs to the machine). To use an NVIDIA GPU with a binary, the CUDA 12 libraries must already be findable on the machine: on Linux install cuBLAS 12 and cuDNN 9 so the system loader sees them (or start it as `LD_LIBRARY_PATH=/folder/with/the/libs ./parlai/parlai`), on Windows install them and put their `bin` folders on `PATH`. Tested once on Windows 11 with an RTX 5070 Laptop GPU: it ran on the CPU until the NVIDIA cuBLAS, cuDNN and NVRTC pip packages (`nvidia-cublas-cu12`, `nvidia-cudnn-cu12`, `nvidia-cuda-nvrtc-cu12`) were installed into a Python install and their `bin` folders added to `PATH`; then it ran on the GPU (about 0.3 s to transcribe 4 s of speech, against about 1 s on the CPU). That setup is awkward and an easier one is planned.
 
 ## Build a binary
 
@@ -72,7 +72,7 @@ Binaries are built and released by one manual GitHub Actions workflow, "Release"
 2. In the Actions tab, run "Release" and enter the tag. Tick Linux and/or Windows to choose what gets built.
 3. The workflow builds the ticked ones from that tag and publishes a GitHub Release with `parlai-linux-x86_64.tar.gz` and/or `parlai-windows-x86_64.zip` attached.
 
-It stops with a message if the tag doesn't exist or nothing is ticked. If a release for the tag already exists, delete it first.
+It stops with a message if the tag doesn't exist or nothing is ticked. If a release for the tag already exists, delete it first. The workflow creates the release itself, so add release notes afterwards with `gh release edit <tag> --notes "..."`.
 
 ### What the binary needs on the machine
 
@@ -88,7 +88,8 @@ Windows:
 - Nothing to install for audio. The Microsoft Visual C++ Redistributable (x64) may be needed by the speech libraries; not verified. The PortAudio DLL ships inside the `sounddevice` package and is bundled, since Windows has no system copy. Audio goes through Windows' own drivers.
 - Microphone access must be allowed: Settings, Privacy and security, Microphone, "Let desktop apps access your microphone".
 - The exe is unsigned, so SmartScreen or an antivirus may warn about it. This is common for PyInstaller builds.
-- Device selection on Windows and macOS trusts the system default, and has not been tested there yet.
+- Device selection on Windows and macOS trusts the system default. On Windows 11 it picked the built-in microphone array and worked; macOS is untested.
+- The first start can take up to a minute on a GPU with no output while the model loads. It is working, not frozen.
 
 ### Check that a binary works
 
@@ -129,7 +130,7 @@ src/
   text_to_speech/        audio player on the speaker, speech engine (Phase 2)
   ai_output_capture/     read AI replies from a terminal or page (Phase 2)
 tests/
-packaging/               PyInstaller spec for the binaries
+packaging/               PyInstaller spec for the binaries, and a stand-in for PyAV (not bundled)
 docs/                    system and project requirements, dependencies, architecture
 ```
 
@@ -146,6 +147,5 @@ Versions up to and including v0.2.1 were released under the MIT licence and stay
 ## Docs
 
 - [System requirements](docs/requirements.md) (hardware, drivers and libraries needed)
-- [Project requirements](docs/project-requirements.md) (features, status, open questions)
-- [Dependencies](docs/dependencies.md)
+- [Dependencies](docs/dependencies.md) and [third-party licences](THIRD_PARTY_NOTICES.md)
 - [Architecture](docs/architecture.md)

@@ -19,7 +19,15 @@ datas = [
     *[item for name in LOGGED_PACKAGES for item in copy_metadata(name)],
 ]
 
-a = Analysis([os.path.join(root, "main.py")], pathex=[os.path.join(root, "src")], datas=datas)
+# PyAV drags in FFmpeg with GPL codecs and we never decode audio files: leave it out and let the
+# runtime hook stand in for it (see stub_av.py).
+a = Analysis(
+    [os.path.join(root, "main.py")],
+    pathex=[os.path.join(root, "src")],
+    datas=datas,
+    excludes=["av"],
+    runtime_hooks=[os.path.join(SPECPATH, "stub_av.py")],
+)
 if sys.platform.startswith("linux"):
     a.binaries = [b for b in a.binaries if not os.path.basename(b[0]).startswith(LINUX_SYSTEM_LIBS)]
 
