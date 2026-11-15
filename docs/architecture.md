@@ -1,11 +1,73 @@
 # Architecture
 
+```mermaid
+flowchart LR
+    subgraph P1["Phase 1: voice in"]
+        direction LR
+        Mic([Microphone]) --> SR["SpeechRecognizer<br/><i>sound_utils.Microphone</i>"]
+        SR --> VAD["VAD<br/><i>silero</i>"]
+        VAD --> STT["STT engine<br/><i>faster-whisper</i>"]
+    end
+
+    STT --> Bus{{"Event bus<br/><i>queue.Queue</i>"}}
+    Bus --> Term["TerminalSink<br/><i>PTY inject</i>"]
+    Bus --> WS["WebSocketSink"] --> Browser([Browser input])
+
+    subgraph P2["Phase 2: voice out"]
+        direction LR
+        Src["Sources<br/><i>PTY tee / browser DOM</i>"] --> Clean[TextCleaner]
+        Clean --> TTS["TTS engine<br/><i>Kokoro / Piper</i>"]
+        TTS --> Player["AudioPlayer<br/><i>sound_utils.Speaker</i>"]
+        Player --> Spk([Speaker])
+    end
+
+    Src -.->|ai_text_chunk| Bus
+    Bus -.-> Clean
 ```
- Mic ─▶ AudioCapture ─▶ VAD ─▶ STT engine ─▶ Event bus ─┬▶ TerminalSink (PTY inject)
-        (sounddevice)  (silero) (faster-whisper)        └▶ WebSocketSink ─▶ browser input
-                                                                │
- Speaker ◀─ AudioPlayer ◀─ TTS engine ◀─ TextCleaner ◀──────────┴─ Sources: PTY tee / browser DOM
-            (sounddevice)  (Kokoro/Piper)                                    (Phase 2)
+
+How the shared `sound_utils` classes fit together (the recogniser and player are the only ones `main.py` sees):
+
+```mermaid
+classDiagram
+    class AudioLevels {
+        <<mixin>>
+        apply_gain()
+        measure_levels()
+    }
+    class DevicePicker {
+        <<mixin>>
+        pick()
+        choose_default()
+    }
+    class LinuxDevicePicker {
+        prefers pipewire / pulse
+    }
+    class AudioDevice {
+        choose()
+        resolve()
+        save_wav()
+    }
+    class Microphone {
+        record()
+        list_devices()
+    }
+    class Speaker {
+        play()
+    }
+    class SpeechRecognizer {
+        listen()
+    }
+    class AudioPlayer {
+        speak()
+    }
+
+    DevicePicker <|-- LinuxDevicePicker
+    AudioLevels <|-- AudioDevice
+    DevicePicker <|-- AudioDevice : on Linux, LinuxDevicePicker
+    AudioDevice <|-- Microphone
+    AudioDevice <|-- Speaker
+    Microphone <|-- SpeechRecognizer
+    Speaker <|-- AudioPlayer
 ```
 
 The app runs as a few plain threads (mic, recogniser, server); the packages talk through a small event bus built on thread-safe `queue.Queue`. Events: `partial_text`, `final_text`, `speech_start`, `speech_end`, `ai_text_chunk`.
@@ -43,6 +105,14 @@ parlai/
 ```
 
 Each new package must be added to `packages = [...]` under `[tool.hatch.build.targets.wheel]` in `pyproject.toml`, then `uv sync`. Plain `python3 main.py` fails because the system Python can't see the venv; use `uv run` or the `.venv` interpreter.
+
+## Building binaries
+PyInstaller (a dev-only dependency) bundles Python and the app into a folder you can run without installing anything but the system sound libraries (see the README for what each OS needs). It cannot cross-compile, so each OS builds on its own OS.
+
+- Local build: `uv run pyinstaller --noconfirm --distpath dist --workpath build packaging/parlai.spec`, then run `dist/parlai/parlai`.
+- CI: `.github/workflows/build.yml` builds Windows (`windows-latest`) and Linux (`ubuntu-22.04`) on a `v*` tag or a manual run, and uploads each as an artifact.
+- The Linux build is made on Ubuntu 22.04 on purpose: a binary needs a glibc at least as old as the target, and a build on a rolling distro such as Arch would not start on older Debian.
+- `packaging/parlai.spec` strips the system sound libraries (`libportaudio`, `libasound`, `libjack`, `libdb`) from the Linux bundle, so the app uses the user's own audio stack. Windows keeps the PortAudio DLL because it ships inside the `sounddevice` wheel and Windows has no system copy.
 
 ## Milestones
 1. **M0:** project scaffold (`uv init`, deps, CLI skeleton).

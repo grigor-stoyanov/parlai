@@ -24,9 +24,37 @@ Optional. Copy `.env.example` to `.env` and change the values (audio settings, r
 
 ```bash
 uv run python main.py
+uv run python main.py --mic-check   # record 5 seconds and play it back
 ```
 
 Plain `python3 main.py` won't work, because the system Python can't see the project's virtual environment. In PyCharm, set the interpreter to `.venv`.
+
+## Build a binary
+
+For testing on machines without Python. PyInstaller can't cross-compile, so build on the OS you target:
+
+```bash
+uv run pyinstaller --noconfirm --distpath dist --workpath build packaging/parlai.spec
+dist/parlai/parlai --mic-check
+```
+
+GitHub Actions builds both Windows and Linux when you push a `v*` tag or run the "Build binaries" workflow by hand; the results are downloadable artifacts.
+
+### What the binary needs on the machine
+
+The binary does not bundle drivers or system sound libraries. It connects to whatever the user already has, so the audio stack must be there.
+
+Linux:
+- PortAudio must be installed: `libportaudio2` on Debian and Ubuntu, `portaudio` on Arch and Fedora. Without it the app fails at startup with a PortAudio error.
+- Most desktops need the ALSA bridge to the sound server for the right microphone to be picked automatically: `pipewire-alsa` for PipeWire, `libasound2-plugins` for PulseAudio. Without it only raw `hw:` devices appear, which can be busy or silent. Set `PARLAI_INPUT_DEVICE` to choose one by hand.
+- The Linux build is made on Ubuntu 22.04, so it needs glibc 2.35 or newer: Debian 12, Ubuntu 22.04 and newer, current Fedora and Arch all work; Debian 11 does not.
+- x86_64 only for now.
+
+Windows:
+- Nothing to install. The PortAudio DLL ships inside the `sounddevice` package and is bundled, since Windows has no system copy. Audio goes through Windows' own drivers.
+- Microphone access must be allowed: Settings, Privacy and security, Microphone, "Let desktop apps access your microphone".
+- The exe is unsigned, so SmartScreen or an antivirus may warn about it. This is common for PyInstaller builds.
+- Device selection on Windows and macOS trusts the system default, and has not been tested there yet.
 
 ## Develop
 
@@ -42,12 +70,14 @@ uv run ruff format .     # format
 main.py                  main loop that wires the packages together
 src/
   config/                settings from PARLAI_* environment variables, checked at startup
-  speech_to_text/        mic capture, voice activity detection, Whisper
+  sound_utils/           shared microphone and speaker classes, device choice, gain, wav
+  speech_to_text/        recogniser on the microphone, voice activity detection, Whisper
   event_bus/             small thread-safe bus the packages talk through
   text_delivery/         send text to a terminal (PTY) or browser input
-  text_to_speech/        speak AI replies (Phase 2)
+  text_to_speech/        audio player on the speaker, speech engine (Phase 2)
   ai_output_capture/     read AI replies from a terminal or page (Phase 2)
 tests/
+packaging/               PyInstaller spec for the binaries
 docs/                    requirements, dependencies, architecture
 ```
 

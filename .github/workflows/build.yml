@@ -1,0 +1,38 @@
+name: Build binaries
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # Oldest glibc we build on decides the oldest Linux we run on (Debian 12, Ubuntu 22.04+).
+          - os: ubuntu-22.04
+            name: parlai-linux-x86_64
+          - os: windows-latest
+            name: parlai-windows-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+      - if: runner.os == 'Linux'
+        # Needed only so Python can import sounddevice during the build; it is not bundled.
+        run: sudo apt-get update && sudo apt-get install -y libportaudio2
+      - run: uv run pyinstaller --noconfirm --distpath dist --workpath build packaging/parlai.spec
+      - if: runner.os == 'Linux'
+        run: tar -czf ${{ matrix.name }}.tar.gz -C dist parlai
+      - if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}.tar.gz
+      - if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/parlai

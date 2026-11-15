@@ -10,3 +10,5 @@ models/
 .env
 .claude/.edited-files
 TODO.md
+build/
+dist/

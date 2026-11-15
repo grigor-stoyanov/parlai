@@ -12,7 +12,9 @@
 | Env file | `python-dotenv` | Loads `.env` into the environment; `config` validates the values at startup |
 | Config/CLI | stdlib `argparse` for now | Swap to `typer` only if the CLI grows |
 | Tests | `pytest` | |
+| Packaging (dev) | `pyinstaller` | Bundles Python and the app for users without Python. Build per OS, no cross-compiling. Alternatives: Nuitka (slower builds), cx_Freeze (fewer audio hooks) |
+| CI builds | GitHub Actions | Builds the Windows and Linux binaries on their own OS runners (`.github/workflows/build.yml`) |
 
-System packages (Arch): `portaudio`, `pipewire-alsa`, optionally CUDA/`cudnn` for GPU.
+System packages (Arch): `portaudio`, `pipewire-alsa`, optionally CUDA/`cudnn` for GPU. Built binaries do not bundle system sound libraries or drivers; per-OS requirements are in the README.
 
 Note: system Python is 3.14; the project pins 3.12 via `.python-version` (uv fetches it) because ML wheels (ctranslate2 etc.) lag behind. Runtime dependencies start empty and are added per milestone.

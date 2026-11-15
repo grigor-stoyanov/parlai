@@ -11,7 +11,11 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest", "ruff"]
+dev = [
+    "pyinstaller>=6.22.3",
+    "pytest",
+    "ruff",
+]
 
 [build-system]
 requires = ["hatchling"]
