@@ -2,15 +2,14 @@
 
 import logging
 import time
-from pathlib import Path
 
 import numpy as np
 from faster_whisper import WhisperModel
-from faster_whisper.utils import download_model
 
 from config.settings import Settings
 from event_logger.json_log import log_event
 from speech_to_text import cuda_libraries
+from speech_to_text.model_files import find_model
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,7 @@ class WhisperEngine:
         """Load the model, downloading it first if it is not in the cache. Slow, so do it early."""
         if self.model is not None:
             return
-        path = self._find_model()
+        path = find_model(self.settings.whisper_model)
         devices = (
             ["cuda", "cpu"]
             if self.settings.whisper_device == "auto"
@@ -73,36 +72,6 @@ class WhisperEngine:
                 seconds=round(time.monotonic() - started, 1),
             )
             return
-
-    def _find_model(self) -> str:
-        """Where the model files are: a folder the user gave, the cache, or a fresh download."""
-        name = self.settings.whisper_model
-        if Path(name).is_dir():
-            log_event(logger, logging.INFO, "model", "using model folder", path=name)
-            return name
-        try:
-            path = download_model(name, local_files_only=True)
-            log_event(logger, logging.INFO, "model", "using cached model", model=name, path=path)
-        except FileNotFoundError:
-            log_event(
-                logger,
-                logging.INFO,
-                "model",
-                "model not in cache, downloading (first run, needs internet)",
-                model=name,
-            )
-            started = time.monotonic()
-            path = download_model(name)
-            log_event(
-                logger,
-                logging.INFO,
-                "model",
-                "model downloaded",
-                model=name,
-                path=path,
-                seconds=round(time.monotonic() - started, 1),
-            )
-        return path
 
     def _load_on(self, path: str, device: str) -> WhisperModel:
         model = WhisperModel(path, device=device, compute_type=COMPUTE_TYPES[device])

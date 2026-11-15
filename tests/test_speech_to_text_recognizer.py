@@ -1,9 +1,13 @@
 from config.settings import load_settings
 from event_bus.bus import EventBus
 from event_bus.events import FinalText
-from speech_to_text.recognizer import PRE_ROLL_BLOCKS, SpeechRecognizer, silence_blocks
+from speech_to_text.block_timing import silence_blocks, utterance_max_blocks
+from speech_to_text.recognizer import SpeechRecognizer
+from speech_to_text.utterance_buffer import PRE_ROLL_BLOCKS
 
-SETTINGS = load_settings({})
+# Partials off: these tests are about the final texts, and a partial job would also reach the
+# engine and change what it "heard".
+SETTINGS = load_settings({"PARLAI_PARTIAL_INTERVAL_MS": "0"})
 SILENCE_BLOCKS_TO_END = silence_blocks(SETTINGS)
 END = "." * SILENCE_BLOCKS_TO_END
 
@@ -32,8 +36,10 @@ def run(pattern):
     finals = bus.subscribe(FinalText)
     engine = RecordingEngine()
     recognizer = SpeechRecognizer(SETTINGS, bus, vad=PatternVad(pattern), engine=engine)
+    recognizer.start()
     for number in range(len(pattern)):
         recognizer.process(bytes([number]))
+    recognizer.stop()  # waits for the worker thread, so every text has been published
     return finals, engine
 
 
@@ -123,3 +129,53 @@ def test_the_silence_setting_changes_when_an_utterance_ends():
     settings = load_settings({"PARLAI_UTTERANCE_SILENCE_MS": "100"})
 
     assert silence_blocks(settings) < SILENCE_BLOCKS_TO_END
+
+
+CAPPED_SETTINGS = load_settings(
+    {"PARLAI_UTTERANCE_MAX_MS": "480", "PARLAI_PARTIAL_INTERVAL_MS": "0"}  # 15 blocks, no partials
+)
+CAP_BLOCKS = utterance_max_blocks(CAPPED_SETTINGS)
+
+
+def run_capped(pattern):
+    bus = EventBus()
+    finals = bus.subscribe(FinalText)
+    engine = RecordingEngine()
+    recognizer = SpeechRecognizer(CAPPED_SETTINGS, bus, vad=PatternVad(pattern), engine=engine)
+    recognizer.start()
+    for number in range(len(pattern)):
+        recognizer.process(bytes([number]))
+    recognizer.stop()
+    return finals, engine
+
+
+def test_utterance_max_blocks_rounds_down_so_it_is_never_longer():
+    assert CAP_BLOCKS == 15
+    assert utterance_max_blocks(load_settings({"PARLAI_UTTERANCE_MAX_MS": "500"})) == 15
+
+
+def test_utterance_max_blocks_is_at_least_one():
+    assert utterance_max_blocks(load_settings({"PARLAI_UTTERANCE_MAX_MS": "1"})) == 1
+
+
+def test_a_long_utterance_is_cut_at_the_limit_and_the_rest_is_a_second_text():
+    finals, engine = run_capped("S" * 20 + END)
+
+    assert finals.qsize() == 2
+    assert engine.heard[0] == bytes(range(CAP_BLOCKS))
+
+
+def test_the_text_after_a_cut_starts_with_the_pre_roll_of_the_old_utterance():
+    _, engine = run_capped("S" * 20 + END)
+
+    # The second utterance has its own full 15 blocks (the pause counts too), so it is closed
+    # by the limit again, 15 blocks after the cut.
+    cut_end = CAP_BLOCKS
+    assert engine.heard[1] == bytes(range(cut_end - PRE_ROLL_BLOCKS, cut_end + CAP_BLOCKS))
+
+
+def test_a_cut_during_a_pause_publishes_one_text_and_waits_for_new_speech():
+    finals, engine = run_capped("S" * (CAP_BLOCKS - 1) + "." + "." * 20)
+
+    assert finals.qsize() == 1
+    assert len(engine.heard) == 1

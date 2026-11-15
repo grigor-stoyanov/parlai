@@ -9,22 +9,9 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from event_logger.json_log import log_event
+from speech_to_text.cuda_library_names import LIBRARIES, LIBRARY_FOLDER
 
 logger = logging.getLogger(__name__)
-
-# Which libraries to load from each pip package, in the order they must be loaded:
-# cuBLAS needs cuBLASLt, so that one goes first.
-LIBRARIES = {
-    "nvidia.cublas": {
-        "linux": ("libcublasLt.so.12", "libcublas.so.12"),
-        "win32": ("cublasLt64_12.dll", "cublas64_12.dll"),
-    },
-    "nvidia.cudnn": {
-        "linux": ("libcudnn.so.9",),
-        "win32": ("cudnn64_9.dll",),
-    },
-}
-LIBRARY_FOLDER = {"linux": "lib", "win32": "bin"}
 
 
 def library_paths(package_dirs: Mapping[str, Path], platform: str) -> list[Path]:

@@ -5,17 +5,18 @@ Run with `uv run python main.py` (or the project's .venv interpreter in PyCharm)
 
 import argparse
 import os
+import queue
 import time
 
 from dotenv import load_dotenv
 
 from config.settings import ConfigError, Settings, load_settings
 from event_bus.bus import EventBus
-from event_bus.events import FinalText
 from event_logger.bus_logger import EventLogger
 from event_logger.lifecycle import log_crash, log_exit, log_startup
 from event_logger.logging_setup import setup_logging
 from speech_to_text.recognizer import SpeechRecognizer
+from text_delivery.console_display import ConsoleDisplay
 from text_to_speech.audio_player import AudioPlayer
 
 
@@ -31,6 +32,12 @@ def mic_check(settings: Settings, seconds: float = 5) -> None:
     print(f"Levels: peak {peak:.1f} dBFS, average (RMS) {rms:.1f} dBFS")
     print(f"Saved {path}, playing it back...")
     player.play(audio)
+
+
+def show_events(events: queue.Queue, display: ConsoleDisplay) -> None:
+    """Show every event that has arrived. The texts come from the transcription thread."""
+    while not events.empty():
+        display.handle(events.get_nowait())
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -60,19 +67,25 @@ def main(argv: list[str] | None = None) -> None:
         live_bus = EventBus()
         event_log = EventLogger(live_bus, include_text=settings.log_level == "DEBUG")
         event_log.start()
-        finals = live_bus.subscribe(FinalText)
+        # One inbox for everything, so a partial can never be shown after its final text.
+        events = live_bus.subscribe_all()
+        display = ConsoleDisplay()
         live_recognizer = SpeechRecognizer(settings, live_bus)
         print("Loading the speech model (downloads once, then works offline)...")
         live_recognizer.prepare()
         print("Speak, Ctrl-C to stop")
+        live_recognizer.start()
         try:
             for block in live_recognizer.blocks():
                 live_recognizer.process(block)
-                while not finals.empty():
-                    print(finals.get_nowait().text)
+                show_events(events, display)
         except KeyboardInterrupt:
             print()
             reason = "stopped by user"
+        finally:
+            # Finishes the sentence still being transcribed, so the last words are not lost.
+            live_recognizer.stop()
+            show_events(events, display)
     except Exception as error:
         reason = "crashed"
         log_crash(error)

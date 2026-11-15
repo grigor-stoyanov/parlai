@@ -4,14 +4,16 @@ from pathlib import Path
 from config.settings import load_settings
 from event_bus.bus import EventBus
 from event_bus.events import FinalText
-from speech_to_text.recognizer import SpeechRecognizer, silence_blocks
+from speech_to_text.block_timing import silence_blocks
+from speech_to_text.recognizer import SpeechRecognizer
 from speech_to_text.voice_activity_detection import BLOCK_SAMPLES, Vad
 
 # A real recording of the project author saying "Hello, this is a test of the voice activity
 # detector.", trimmed to the speech plus about a quarter of a second of silence each side.
 CLIP = Path(__file__).parent / "fixtures" / "speech_16k_mono.wav"
 BLOCK_BYTES = BLOCK_SAMPLES * 2
-SETTINGS = load_settings({})
+# Partials off: a partial job would reach the engine too and change what it "heard".
+SETTINGS = load_settings({"PARLAI_PARTIAL_INTERVAL_MS": "0"})
 SILENCE = bytes(BLOCK_BYTES)
 
 
@@ -47,8 +49,10 @@ def test_a_real_clip_through_the_recogniser_is_one_utterance():
             return "text"
 
     recognizer = SpeechRecognizer(SETTINGS, bus, engine=Engine())
+    recognizer.start()
     for block in padded_blocks(lead=10, trail=silence_blocks(SETTINGS) + 5):
         recognizer.process(block)
+    recognizer.stop()  # waits for the worker thread, so the text has been published
 
     assert finals.qsize() == 1
 
@@ -62,8 +66,10 @@ def test_the_recogniser_gives_the_engine_the_speech_not_just_silence():
             return "text"
 
     recognizer = SpeechRecognizer(SETTINGS, EventBus(), engine=Engine())
+    recognizer.start()
     for block in padded_blocks(lead=10, trail=silence_blocks(SETTINGS) + 5):
         recognizer.process(block)
+    recognizer.stop()
 
     assert len(heard) == 1
     assert any(heard[0])

@@ -6,7 +6,7 @@ Everything runs locally: no audio leaves your machine.
 
 ## Status
 
-Speech to text works in the terminal: it listens to your microphone, detects when you speak, and prints what you said, on the GPU if one works and otherwise the CPU. Not built yet: live partial text while you speak, sending text into another terminal or a browser input, and spoken AI replies (the speech engine is still a mock). See what a machine needs in [docs/requirements.md](docs/requirements.md), and the milestones in [docs/architecture.md](docs/architecture.md).
+Speech to text works in the terminal: it listens to your microphone, detects when you speak, and prints what you said, on the GPU if one works and otherwise the CPU. Live partial text is shown while you speak. Not built yet: sending text into another terminal or a browser input, and spoken AI replies (the speech engine is still a mock). See what a machine needs in [docs/requirements.md](docs/requirements.md), and the milestones in [docs/architecture.md](docs/architecture.md).
 
 ## Setup
 
@@ -18,7 +18,7 @@ uv sync
 
 ## Configure
 
-Optional. Copy `.env.example` to `.env` and change the values (audio settings, recordings folder). Invalid values stop the app at startup with a message naming the variable and the broken rule (codes `PARLAI-E001` to `E103`, defined in `src/config/rules.py`). Allowed: sample rate 16000 (the voice activity detector and Whisper only take 16 kHz), block size 512 to match, 1 channel. `PARLAI_UTTERANCE_SILENCE_MS` (default 500) is how long you must pause before the text for what you said appears: lower is faster but splits sentences at small pauses, higher waits longer. Speech recognition: `PARLAI_WHISPER_MODEL` (default `small.en`) and `PARLAI_WHISPER_DEVICE` (`auto`, `cuda` or `cpu`; `auto` uses the GPU when it works, else the CPU). The first run downloads the model from Hugging Face (about 0.5 GB for `small.en`; no audio is sent) and later runs work offline.
+Optional. Copy `.env.example` to `.env` and change the values (audio settings, recordings folder). Invalid values stop the app at startup with a message naming the variable and the broken rule (codes `PARLAI-E001` to `E103`, defined in `src/config/rules.py`). Allowed: sample rate 16000 (the voice activity detector and Whisper only take 16 kHz), block size 512 to match, 1 channel. `PARLAI_UTTERANCE_SILENCE_MS` (default 500) is how long you must pause before the text for what you said appears: lower is faster but splits sentences at small pauses, higher waits longer. `PARLAI_UTTERANCE_MAX_MS` (default 15000) is the longest one utterance can run: when you talk without a pause for that long, the text so far appears and listening carries on as a new utterance (one word at the cut may repeat). While you speak, the line is redrawn with live text every `PARLAI_PARTIAL_INTERVAL_MS` (default 700; 0 turns it off, which suits a slow CPU) from the last `PARLAI_PARTIAL_WINDOW_MS` (default 8000) of what you said; the final text replaces it when you pause. Speech recognition: `PARLAI_WHISPER_MODEL` (default `small.en`) and `PARLAI_WHISPER_DEVICE` (`auto`, `cuda` or `cpu`; `auto` uses the GPU when it works, else the CPU). The first run downloads the model from Hugging Face (about 0.5 GB for `small.en`; no audio is sent) and later runs work offline.
 
 ## Run
 

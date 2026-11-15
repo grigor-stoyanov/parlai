@@ -10,6 +10,13 @@ DEFAULT_SAMPLE_RATE = 16000
 DEFAULT_BLOCK_SIZE = 512
 DEFAULT_CHANNELS = 1
 DEFAULT_UTTERANCE_SILENCE_MS = 500
+# The longest one utterance may run. Whisper reads about 30 s at a time; 15 s keeps one
+# transcription short even on the CPU.
+DEFAULT_UTTERANCE_MAX_MS = 15000
+# Live text while you speak: every 700 ms the last 8 s of the utterance are transcribed again.
+# An interval of 0 turns partials off (the CPU may be too slow for them).
+DEFAULT_PARTIAL_INTERVAL_MS = 700
+DEFAULT_PARTIAL_WINDOW_MS = 8000
 DEFAULT_LOG_MAX_MB = 50
 DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_LOG_KEEP_DAYS = 14
@@ -48,6 +55,7 @@ NOT_A_POSITIVE_GAIN = Rule(
     "PARLAI-E003", "must be a positive number (1.0 leaves the volume unchanged)"
 )
 NOT_A_FOLDER = Rule("PARLAI-E002", "must be a folder, not a file")
+NOT_A_WHOLE_NUMBER = Rule("PARLAI-E004", "must be a whole number, 0 or more")
 SAMPLE_RATE = Rule(
     "PARLAI-E101",
     "must be {allowed}: the only rate the voice activity detector and Whisper accept",
