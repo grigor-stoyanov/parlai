@@ -21,6 +21,7 @@ build-backend = "hatchling.build"
 packages = [
     "src/config",
     "src/speech_to_text",
+    "src/sound_utils",
     "src/event_bus",
     "src/text_delivery",
     "src/text_to_speech",

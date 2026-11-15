@@ -1,5 +1,6 @@
 """Reads and checks the PARLAI_* environment variables against the rules in rules.py."""
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +18,11 @@ class Settings:
     block_size: int
     channels: int
     recordings_dir: Path
+    # None = pick automatically; otherwise a device index or a name substring.
+    input_device: str | None = None
+    # Software volume multipliers (1.0 = unchanged), applied to the mic and to playback.
+    input_gain: float = 1.0
+    playback_gain: float = 1.0
 
 
 def _positive_int(
@@ -31,6 +37,19 @@ def _positive_int(
     if value <= 0:
         problems.append(rules.NOT_A_POSITIVE_NUMBER.violation(name, raw))
         return None
+    return value
+
+
+def _gain(env: Mapping[str, str], name: str, problems: list[str]) -> float:
+    """Return the setting as a positive finite float (default 1.0), or record a problem."""
+    raw = (env.get(name) or "1.0").strip()
+    try:
+        value = float(raw)
+    except ValueError:
+        value = 0.0
+    if not math.isfinite(value) or value <= 0:
+        problems.append(rules.NOT_A_POSITIVE_GAIN.violation(name, raw))
+        return 1.0
     return value
 
 
@@ -73,6 +92,10 @@ def load_settings(env: Mapping[str, str]) -> Settings:
     if recordings_dir.exists() and not recordings_dir.is_dir():
         problems.append(rules.NOT_A_FOLDER.violation("PARLAI_RECORDINGS_DIR", str(recordings_dir)))
 
+    input_gain = _gain(env, "PARLAI_INPUT_GAIN", problems)
+    playback_gain = _gain(env, "PARLAI_PLAYBACK_GAIN", problems)
+
     if problems:
         raise ConfigError("\n".join(problems))
-    return Settings(sample_rate, block_size, channels, recordings_dir)
+    input_device = (env.get("PARLAI_INPUT_DEVICE") or "").strip() or None
+    return Settings(sample_rate, block_size, channels, recordings_dir, input_device, input_gain, playback_gain)

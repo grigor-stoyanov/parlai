@@ -1,3 +1,4 @@
+import pytest
 from main import main
 
 
@@ -26,3 +27,13 @@ def test_a_short_gap_does_not_publish_an_end(capsys):
 
     assert lines[lines.index(" 5 .") + 1] == " 6 ."
     assert lines[lines.index(" 6 .") + 1] == " 7 S"
+
+
+def test_invalid_settings_stop_the_app_with_a_clear_message(capsys, monkeypatch):
+    monkeypatch.setenv("PARLAI_SAMPLE_RATE", "abc")
+
+    with pytest.raises(SystemExit) as exit_info:
+        main([], pause=0)
+
+    assert exit_info.value.code == 2
+    assert "PARLAI_SAMPLE_RATE" in capsys.readouterr().err

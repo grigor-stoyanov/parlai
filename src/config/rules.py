@@ -26,6 +26,9 @@ class Rule:
 
 
 NOT_A_POSITIVE_NUMBER = Rule("PARLAI-E001", "must be a positive whole number")
+NOT_A_POSITIVE_GAIN = Rule(
+    "PARLAI-E003", "must be a positive number (1.0 leaves the volume unchanged)"
+)
 NOT_A_FOLDER = Rule("PARLAI-E002", "must be a folder, not a file")
 SAMPLE_RATE = Rule(
     "PARLAI-E101",
