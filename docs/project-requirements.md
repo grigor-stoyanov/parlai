@@ -26,8 +26,18 @@ Status as of the M1 work: **done** = working and run by hand, **partial** = some
 - F11. Configuration through `PARLAI_*` environment variables or a `.env` file, validated at startup. A bad value stops the app with a message naming the variable and a rule code (`PARLAI-E001` and up). **Done.**
 - F12. Logging for debugging: one JSON (or plain text) line per event, startup, model load, error and exit, in daily files that are deleted by age and total size. Transcripts are never logged at the default level, raw audio never. **Done.**
 - F13. Run on an NVIDIA GPU when one works and otherwise on the CPU, chosen automatically and overridable (`PARLAI_WHISPER_DEVICE`). The CUDA 12 libraries are an optional install (`uv sync --extra cuda`). **Done on Linux**, Windows untested.
-- F14. Ship binaries so people can try it without Python: Linux and Windows, built by a manual GitHub Actions workflow and attached to a release. **Partial.** The Linux binary builds and runs; the Windows one is untested, macOS is not built, and none are signed.
+- F14. Ship binaries so people can try it without Python: Linux and Windows, built by a manual GitHub Actions workflow and attached to a release. **Partial.** The Linux binary builds and runs; the Windows one runs (tested 2026-11-15) but its GPU setup is manual, macOS is not built, and none are signed.
 - F15. Binaries and installs never bundle drivers or system sound or GPU libraries; the app connects to what the machine already has and says clearly in the log when something is missing. **Done** (see the README for what each OS needs).
+- F16. Desktop UI: status and device badge, live transcript, microphone picker with level meter, settings, "Enable GPU" button, diagnostics (logs folder, copyable report). **Todo**, framework not chosen (milestone M8).
+
+## Windows test findings (2026-11-15)
+First real test of the Windows binary (0.1.0, Windows 11, RTX 5070 Laptop 8 GB, driver 621.14). The user's own notes are in `windows-desktop-improvements.md` next to the log in their `logs/` folder.
+- It runs and recognition works. On GPU fp16 final text took about 0.25 to 0.3 s for 4 s of speech (about 14 to 17x real time); on CPU int8 about 1 s for 3 to 5 s. Subjective accuracy was better than on Linux, probably the mic and its drivers rather than the app.
+- Getting the GPU working was tedious: the binary first fell back to the CPU (`cublas64_12.dll` not found). It needed a system Python, `pip install` of the NVIDIA cuBLAS, cuDNN and NVRTC wheels and manual `PATH` edits. The log line "no CUDA libraries from the cuda extra, relying on the system's" shows the build ships none.
+- The GPU start looked frozen: about 30 s with no output before the first log line, then 27 s model load and warm-up, about 60 s in all, and the console shows nothing at WARNING level.
+- Log noise: Hugging Face token and `hf_xet` warnings, and `httpx2` lines with signed download URLs (the quiet list has `httpx` but not `httpx2`). The CPU fallback is only a WARNING in the JSON log.
+- `logs/` and `recordings/` are relative paths, so they land next to wherever the exe was started (here Downloads).
+- Ideas from the notes, none agreed yet: separate CPU and CUDA builds, or an on-demand GPU library download into a per-user folder loaded with `os.add_dll_directory`; a `doctor` / check-GPU command; console progress and a plain CPU-fallback message; logging set up before the heavy imports; an installer; a bigger model on GPU.
 
 ## Non-functional
 - Local and private by default: no audio leaves the machine. The only network use is downloading the speech model from Hugging Face once, then it works offline.
@@ -36,14 +46,14 @@ Status as of the M1 work: **done** = working and run by hand, **partial** = some
 - Audio format is fixed by the VAD and Whisper: 16 kHz, mono, 16-bit, 512-sample blocks. Config rejects anything else.
 - Modular: STT engine, sink and TTS engine are swappable behind small interfaces.
 - Simple to run: one command (`uv run python main.py`), or the binary.
-- Platforms: Linux (tested), Windows (built, untested). The Linux binary needs glibc 2.35 or newer (Debian 12, Ubuntu 22.04 and newer) and x86_64.
+- Platforms: Linux (tested), Windows (tested once, CPU and GPU work, see findings). The Linux binary needs glibc 2.35 or newer (Debian 12, Ubuntu 22.04 and newer) and x86_64.
 
 ## Decisions made
 - VAD: Silero model file from faster-whisper, run with onnxruntime in our own wrapper that keeps the model's memory between blocks. No torch.
 - STT: faster-whisper, model `small.en` by default, int8 on CPU and float16 on GPU.
 - GPU: RTX 5070 Laptop (Blackwell) works with the pip CUDA 12 libraries. Arch's own `cuda` package is CUDA 13 and does not work with this ctranslate2. The libraries are loaded inside the app, with no `LD_LIBRARY_PATH`.
 - Packaging: PyInstaller, one build per OS, Linux built on Ubuntu 22.04 for old-glibc compatibility.
-- Code signing, when we release: apply to SignPath Foundation for Windows (free for open source, needs a first release and a published code signing policy); macOS needs a paid Apple Developer ID.
+- Code signing: the binaries stay unsigned. SignPath Foundation is not an option, since it needs an OSI-approved licence with no commercial dual-licensing and ours is PolyForm Noncommercial. The author signs a build with their own paid certificate only for someone who contacts them and asks. macOS would need a paid Apple Developer ID.
 
 ## Open questions
 - "Picks up my voice": plain mic capture, or speaker verification (only respond to *your* voice)? Assumed plain capture. Speaker ID is an optional later feature (e.g. `speechbrain` ECAPA embeddings).
@@ -53,5 +63,5 @@ Status as of the M1 work: **done** = working and run by hand, **partial** = some
 - Utterance cap: what length, and should hitting it end the utterance and carry on listening as a new one?
 - Whisper model: is `small.en` accurate enough, or `medium.en` or a multilingual model, now that the GPU makes bigger ones affordable?
 - macOS: build and support it? It would need an Apple Developer ID to avoid the Gatekeeper block.
-- Windows GPU: the CUDA preload path (`os.add_dll_directory`) and the binary's behaviour with CUDA installed are untested.
+- Windows GPU (partly answered): the app works on GPU once the CUDA 12 DLLs are findable, but the setup is too hard for normal users. How do we ship them (CUDA build, on-demand download, or both)? The CUDA preload path (`os.add_dll_directory`) and the binary's behaviour with CUDA installed are untested.
 - Where a binary keeps its logs and the downloaded model: today `logs/` in the working directory and the Hugging Face cache. A per-user folder may suit installed apps better.

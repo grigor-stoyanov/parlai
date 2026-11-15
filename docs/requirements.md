@@ -35,7 +35,7 @@ For an NVIDIA GPU (optional):
 - If any of it is missing, the log says why and the app runs on the CPU.
 
 ## Windows
-Built by CI, not tested yet.
+Built by CI. Tested once on Windows 11 (RTX 5070 Laptop, driver 621.14): runs on the CPU out of the box and on the GPU after the manual CUDA setup below.
 
 Expected to be needed:
 - Windows 10 or 11, 64-bit.
@@ -45,7 +45,7 @@ Expected to be needed:
 Not needed:
 - PortAudio. It ships inside the app, since Windows has no system copy. Audio goes through Windows' own drivers.
 
-For an NVIDIA GPU (optional, untested):
+For an NVIDIA GPU (optional, works but the setup is manual for now):
 - The NVIDIA driver, and the CUDA 12 libraries (cuBLAS 12 and cuDNN 9, the `cublas64_12.dll` and `cudnn64_9.dll` files) in a folder on `PATH`.
 - Without them the app logs a warning and runs on the CPU.
 

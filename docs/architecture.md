@@ -125,6 +125,7 @@ PyInstaller (a dev-only dependency) bundles Python and the app into a folder you
 6. **M5:** push-to-talk, mute, auto-submit.
 7. **M6 (Phase 2):** PTY output tee, text cleaner, TTS playback, barge-in.
 8. **M7 (optional):** speaker verification, browser extension for arbitrary pages.
+9. **M8 (UI, not scheduled):** a desktop UI for people who do not use a console: status (loading, ready, listening, transcribing, CPU or GPU), live transcript, microphone picker with level meter, settings, an "Enable GPU" button and a diagnostics tab. Framework not chosen (local web UI in a WebView2 shell versus Qt); see "Windows test findings" in `project-requirements.md`. Small console fixes from those findings (startup progress, visible CPU-fallback message) come before it and do not need the UI.
 
 ## Conventions
 - Python 3.12, type hints, `ruff` for lint and format.

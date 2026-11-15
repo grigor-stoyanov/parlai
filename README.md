@@ -139,7 +139,9 @@ See [SECURITY.md](SECURITY.md) for how to report a vulnerability and the design 
 
 ## License
 
-[MIT](LICENSE)
+[PolyForm Noncommercial 1.0.0](LICENSE). The code is open to read, run, modify and share for personal and other noncommercial use. Using it for a commercial purpose, for example inside a company, needs a separate paid licence: email grigor.stoyanov@hotmail.com or open an issue at https://github.com/grigor-stoyanov/parlai/issues to ask.
+
+Versions up to and including v0.2.1 were released under the MIT licence and stay MIT for anyone who already has them. The new terms apply to later versions.
 
 ## Docs
 

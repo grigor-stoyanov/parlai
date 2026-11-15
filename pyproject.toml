@@ -2,7 +2,7 @@
 name = "parlai"
 version = "0.1.0"
 description = "Local voice interface for talking to AI"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
 dependencies = [
