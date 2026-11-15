@@ -6,6 +6,9 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "faster-whisper~=1.2.1",
+    "numpy>=2.5.4",
+    "onnxruntime>=1.32.0",
     "python-dotenv>=1.2.4",
     "sounddevice>=0.5.6",
 ]

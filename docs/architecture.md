@@ -5,7 +5,7 @@ flowchart LR
     subgraph P1["Phase 1: voice in"]
         direction LR
         Mic([Microphone]) --> SR["SpeechRecognizer<br/><i>sound_utils.Microphone</i>"]
-        SR --> VAD["VAD<br/><i>silero</i>"]
+        SR --> VAD["VAD<br/><i>Silero via onnxruntime</i>"]
         VAD --> STT["STT engine<br/><i>faster-whisper</i>"]
     end
 
@@ -79,7 +79,7 @@ Each package does one job and does not orchestrate. The root `main.py` is the ma
 |---|---|---|---|
 | `config` | settings from environment variables (`PARLAI_*`, incl. optional `PARLAI_INPUT_DEVICE`, `PARLAI_INPUT_GAIN`, `PARLAI_PLAYBACK_GAIN`), validated at startup against coded rules in `config/rules.py` | `load_settings(env) -> Settings` | M1 |
 | `sound_utils` | shared sound I/O: `Microphone`/`Speaker` (both an `AudioDevice`: choose + probe a device), gain and dBFS levels (`AudioLevels` mixin) and per-OS default-device rules (`DevicePicker` mixin: Linux prefers PipeWire/Pulse plugins, others trust PortAudio), `save_wav` on every device. Reused by speech_to_text and text_to_speech | `Microphone(settings).record(s)`, `Speaker(settings).play(audio)` | M1 |
-| `speech_to_text` | `SpeechRecognizer` (a `Microphone` plus the recogniser: `listen(s) -> str`), VAD, Whisper | `STTEngine.transcribe_stream(audio_chunks) -> AsyncIterator[Transcript]` | M1 |
+| `speech_to_text` | `SpeechRecognizer` (a `Microphone` plus the pipeline: each block goes through the `Vad` into the `UtteranceSegmenter`, audio is buffered with about 0.3 s of pre-roll, and `FinalText` is published when an utterance ends; `listen(s) -> str` for a fixed-length recording), `Vad` (Silero via onnxruntime), Whisper (mock for now) | `STTEngine.transcribe_stream(audio_chunks) -> AsyncIterator[Transcript]` | M1 |
 | `event_bus` | small thread-safe bus the others talk through | `publish(event)`, `subscribe()` | M3 |
 | `text_delivery` | sinks: PTY injection, WebSocket to browser | `Sink.emit(event)` | M3 |
 | `text_to_speech` | `AudioPlayer` (a `Speaker` plus the TTS engine: `speak(text)`), text cleaning | `TTSEngine.synthesize(text) -> AsyncIterator[bytes]` | M6 |
@@ -95,7 +95,7 @@ parlai/
 ├── src/
 │   ├── config/             # settings
 │   ├── sound_utils/        # audio_device (base), device_picker (choice + per-OS defaults), audio_levels (mixin), microphone, speaker
-│   ├── speech_to_text/     # vad, whisper_engine
+│   ├── speech_to_text/     # recognizer, voice_activity_detection, utterance_segmenter, whisper_engine
 │   ├── event_bus/          # events, bus
 │   ├── text_delivery/      # terminal_sink, websocket_sink
 │   ├── text_to_speech/     # text_cleaner, tts_engine, audio_player

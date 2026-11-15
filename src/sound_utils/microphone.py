@@ -1,6 +1,9 @@
 """The microphone: lists input devices and records raw 16-bit audio."""
 
 import queue
+from collections.abc import Iterator
+from contextlib import closing
+from itertools import islice
 from typing import Any
 
 import sounddevice as sd
@@ -29,6 +32,25 @@ class Microphone(AudioDevice):
                 marker = "  <- selected" if index == chosen else ""
                 print(f"{index}: {device['name']} [{api}]{marker}")
 
+    def blocks(self) -> Iterator[bytes]:
+        """Yield live microphone blocks as they arrive. The stream closes when this is closed."""
+        arrived: queue.Queue[bytes] = queue.Queue()
+
+        # indata is a raw cffi buffer (not a numpy array, since we use RawInputStream).
+        def on_audio(indata: Any, frames: int, time_info: Any, status: sd.CallbackFlags) -> None:
+            arrived.put(bytes(indata))
+
+        with sd.RawInputStream(
+            device=self.resolve(),
+            samplerate=self.settings.sample_rate,
+            channels=self.settings.channels,
+            dtype="int16",
+            blocksize=self.settings.block_size,
+            callback=on_audio,
+        ):
+            while True:
+                yield arrived.get()
+
     def record(self, seconds: float) -> bytes:
         """
         Record from the chosen microphone.
@@ -36,21 +58,7 @@ class Microphone(AudioDevice):
         :param seconds: how long to record.
         :return: raw 16-bit audio as one continuous byte string, with input gain applied.
         """
-        blocks: queue.Queue[bytes] = queue.Queue()
-
-        # indata is a raw cffi buffer (not a numpy array, since we use RawInputStream).
-        def on_audio(indata: Any, frames: int, time_info: Any, status: sd.CallbackFlags) -> None:
-            blocks.put(bytes(indata))
-
-        device = self.resolve()
         blocks_needed = int(seconds * self.settings.sample_rate / self.settings.block_size)
-        with sd.RawInputStream(
-            device=device,
-            samplerate=self.settings.sample_rate,
-            channels=self.settings.channels,
-            dtype="int16",
-            blocksize=self.settings.block_size,
-            callback=on_audio,
-        ):
-            collected = [blocks.get() for _ in range(blocks_needed)]
+        with closing(self.blocks()) as live:
+            collected = list(islice(live, blocks_needed))
         return self.apply_gain(b"".join(collected), self.settings.input_gain)

@@ -5,15 +5,13 @@ Run with `uv run python main.py` (or the project's .venv interpreter in PyCharm)
 
 import argparse
 import os
-import time
 
 from dotenv import load_dotenv
 
 from config.settings import ConfigError, Settings, load_settings
 from event_bus.bus import EventBus
-from event_bus.events import SpeechEnd, SpeechStart
+from event_bus.events import FinalText, SpeechEnd, SpeechStart
 from speech_to_text.recognizer import SpeechRecognizer
-from speech_to_text.utterance_segmenter import UtteranceSegmenter
 from text_to_speech.audio_player import AudioPlayer
 
 
@@ -31,14 +29,11 @@ def mic_check(settings: Settings, seconds: float = 5) -> None:
     player.play(audio)
 
 
-def main(argv: list[str] | None = None, pause: float = 0.5) -> None:
+def main(argv: list[str] | None = None) -> None:
     # argv is injectable so tests don't parse pytest's own command-line flags.
     parser = argparse.ArgumentParser(prog="parlai", description="Talk to AI with your voice.")
     parser.add_argument(
         "--mic-check", action="store_true", help="record 5 seconds and play it back"
-    )
-    parser.add_argument(
-        "--voice-demo", action="store_true", help="after the demo: mic to mock text to mock voice"
     )
     args = parser.parse_args(argv)
 
@@ -52,28 +47,18 @@ def main(argv: list[str] | None = None, pause: float = 0.5) -> None:
         mic_check(settings)
         return
 
-    mock_audio = "..SSS..SS......SS....imasnake"
-    bus = EventBus()
-    starts = bus.subscribe(SpeechStart)
-    ends = bus.subscribe(SpeechEnd)
-    segmenter = UtteranceSegmenter(bus)
-
-    for i, chunk in enumerate(mock_audio):
-        segmenter.feed(chunk == "S")
-        print(f"{i:2} {chunk}")
-        for inbox in (starts, ends):
-            while not inbox.empty():
-                print(f"   -> {inbox.get_nowait()}")
-        time.sleep(pause)
-
-
-    recognizer = SpeechRecognizer(settings)
-    player = AudioPlayer(settings)
-    print("Speak for 3 seconds...")
-    text = recognizer.listen(3)
-    print(f"Heard: {text}")
-    print(f"Speaking: {text}")
-    player.speak(text)
+    live_bus = EventBus()
+    inboxes = [live_bus.subscribe(kind) for kind in (SpeechStart, SpeechEnd, FinalText)]
+    live_recognizer = SpeechRecognizer(settings, live_bus)
+    print("Speak, Ctrl-C to stop")
+    try:
+        for block in live_recognizer.blocks():
+            live_recognizer.process(block)
+            for inbox in inboxes:
+                while not inbox.empty():
+                    print(f"-> {inbox.get_nowait()}")
+    except KeyboardInterrupt:
+        print()
 
 
 if __name__ == "__main__":
