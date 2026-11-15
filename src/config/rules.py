@@ -9,10 +9,14 @@ from dataclasses import dataclass
 DEFAULT_SAMPLE_RATE = 16000
 DEFAULT_BLOCK_SIZE = 512
 DEFAULT_CHANNELS = 1
+DEFAULT_UTTERANCE_SILENCE_MS = 500
+DEFAULT_WHISPER_MODEL = "small.en"
+DEFAULT_WHISPER_DEVICE = "auto"
 
 ALLOWED_SAMPLE_RATES = (8000, 16000)
 BLOCK_SIZE_FOR_RATE = {8000: 256, 16000: 512}
 ALLOWED_CHANNELS = (1,)
+ALLOWED_WHISPER_DEVICES = ("auto", "cuda", "cpu")
 
 
 @dataclass(frozen=True)
@@ -43,7 +47,12 @@ CHANNELS = Rule(
     "must be {allowed}: Whisper and the VAD both expect a single (mono) channel",
 )
 
+WHISPER_DEVICE = Rule(
+    "PARLAI-E201",
+    "must be {allowed}: auto uses the GPU if one works, else the CPU",
+)
 
-def join_with_or(values: tuple[int, ...]) -> str:
+
+def join_with_or(values: tuple[int | str, ...]) -> str:
     """Format allowed values for a message, for example '8000 or 16000'."""
     return " or ".join(str(value) for value in values)

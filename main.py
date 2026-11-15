@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 from config.settings import ConfigError, Settings, load_settings
 from event_bus.bus import EventBus
-from event_bus.events import FinalText, SpeechEnd, SpeechStart
+from event_bus.events import FinalText
 from speech_to_text.recognizer import SpeechRecognizer
 from text_to_speech.audio_player import AudioPlayer
 
@@ -48,15 +48,16 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     live_bus = EventBus()
-    inboxes = [live_bus.subscribe(kind) for kind in (SpeechStart, SpeechEnd, FinalText)]
+    finals = live_bus.subscribe(FinalText)
     live_recognizer = SpeechRecognizer(settings, live_bus)
+    print("Loading the speech model (downloads once, then works offline)...")
+    live_recognizer.prepare()
     print("Speak, Ctrl-C to stop")
     try:
         for block in live_recognizer.blocks():
             live_recognizer.process(block)
-            for inbox in inboxes:
-                while not inbox.empty():
-                    print(f"-> {inbox.get_nowait()}")
+            while not finals.empty():
+                print(finals.get_nowait().text)
     except KeyboardInterrupt:
         print()
 

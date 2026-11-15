@@ -18,7 +18,7 @@ uv sync
 
 ## Configure
 
-Optional. Copy `.env.example` to `.env` and change the values (audio settings, recordings folder). Invalid values stop the app at startup with a message naming the variable and the broken rule (codes `PARLAI-E001` to `E103`, defined in `src/config/rules.py`). Allowed: sample rate 8000 or 16000, block size 256 or 512 to match, 1 channel.
+Optional. Copy `.env.example` to `.env` and change the values (audio settings, recordings folder). Invalid values stop the app at startup with a message naming the variable and the broken rule (codes `PARLAI-E001` to `E103`, defined in `src/config/rules.py`). Allowed: sample rate 8000 or 16000, block size 256 or 512 to match, 1 channel. `PARLAI_UTTERANCE_SILENCE_MS` (default 500) is how long you must pause before the text for what you said appears: lower is faster but splits sentences at small pauses, higher waits longer. Speech recognition: `PARLAI_WHISPER_MODEL` (default `small.en`) and `PARLAI_WHISPER_DEVICE` (`auto`, `cuda` or `cpu`; `auto` uses the GPU when it works, else the CPU). The first run downloads the model from Hugging Face (about 0.5 GB for `small.en`; no audio is sent) and later runs work offline.
 
 ## Run
 

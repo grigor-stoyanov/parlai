@@ -23,6 +23,11 @@ class Settings:
     # Software volume multipliers (1.0 = unchanged), applied to the mic and to playback.
     input_gain: float = 1.0
     playback_gain: float = 1.0
+    # Speech recognition: a faster-whisper model name, and where it runs (auto, cuda or cpu).
+    whisper_model: str = rules.DEFAULT_WHISPER_MODEL
+    whisper_device: str = rules.DEFAULT_WHISPER_DEVICE
+    # How long you must stay silent, in milliseconds, before an utterance counts as finished.
+    utterance_silence_ms: int = rules.DEFAULT_UTTERANCE_SILENCE_MS
 
 
 def _positive_int(
@@ -95,7 +100,32 @@ def load_settings(env: Mapping[str, str]) -> Settings:
     input_gain = _gain(env, "PARLAI_INPUT_GAIN", problems)
     playback_gain = _gain(env, "PARLAI_PLAYBACK_GAIN", problems)
 
+    whisper_model = (env.get("PARLAI_WHISPER_MODEL") or rules.DEFAULT_WHISPER_MODEL).strip()
+    whisper_device = (
+        (env.get("PARLAI_WHISPER_DEVICE") or rules.DEFAULT_WHISPER_DEVICE).strip().lower()
+    )
+    if whisper_device not in rules.ALLOWED_WHISPER_DEVICES:
+        allowed = rules.join_with_or(rules.ALLOWED_WHISPER_DEVICES)
+        problems.append(
+            rules.WHISPER_DEVICE.violation("PARLAI_WHISPER_DEVICE", whisper_device, allowed=allowed)
+        )
+
+    utterance_silence_ms = _positive_int(
+        env, "PARLAI_UTTERANCE_SILENCE_MS", rules.DEFAULT_UTTERANCE_SILENCE_MS, problems
+    )
+
     if problems:
         raise ConfigError("\n".join(problems))
     input_device = (env.get("PARLAI_INPUT_DEVICE") or "").strip() or None
-    return Settings(sample_rate, block_size, channels, recordings_dir, input_device, input_gain, playback_gain)
+    return Settings(
+        sample_rate,
+        block_size,
+        channels,
+        recordings_dir,
+        input_device,
+        input_gain,
+        playback_gain,
+        whisper_model,
+        whisper_device,
+        utterance_silence_ms,
+    )

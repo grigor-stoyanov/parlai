@@ -1,5 +1,6 @@
 """Listens on the microphone and turns speech into text."""
 
+import math
 import queue
 from collections import deque
 
@@ -16,6 +17,12 @@ from speech_to_text.whisper_engine import WhisperEngine
 PRE_ROLL_BLOCKS = 10
 
 
+def silence_blocks(settings: Settings) -> int:
+    """How many silent blocks in a row end an utterance, rounded up so it is never shorter."""
+    block_ms = 1000 * settings.block_size / settings.sample_rate
+    return max(1, math.ceil(settings.utterance_silence_ms / block_ms))
+
+
 class SpeechRecognizer(Microphone):
     def __init__(
         self,
@@ -27,12 +34,16 @@ class SpeechRecognizer(Microphone):
         super().__init__(settings)
         self.bus = bus or EventBus()
         self.vad = vad or Vad()
-        self.engine = engine or WhisperEngine()
-        self.segmenter = UtteranceSegmenter(self.bus)
+        self.engine = engine or WhisperEngine(settings)
+        self.segmenter = UtteranceSegmenter(self.bus, silence_blocks(settings))
         self.starts = self.bus.subscribe(SpeechStart)
         self.ends = self.bus.subscribe(SpeechEnd)
         self.pre_roll: deque[bytes] = deque(maxlen=PRE_ROLL_BLOCKS)
         self.utterance: list[bytes] | None = None
+
+    def prepare(self) -> None:
+        """Load the speech model now (downloads it the first time) so listening starts fast."""
+        self.engine.load()
 
     def process(self, block: bytes) -> None:
         """Take the next microphone block. Publishes FinalText when an utterance has ended."""
