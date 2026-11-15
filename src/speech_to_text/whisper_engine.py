@@ -10,6 +10,7 @@ from faster_whisper.utils import download_model
 
 from config.settings import Settings
 from event_logger.json_log import log_event
+from speech_to_text import cuda_libraries
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,8 @@ class WhisperEngine:
             if self.settings.whisper_device == "auto"
             else [self.settings.whisper_device]
         )
+        if "cuda" in devices:
+            cuda_libraries.preload()
         for device in devices:
             started = time.monotonic()
             try:

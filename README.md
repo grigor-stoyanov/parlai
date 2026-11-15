@@ -6,7 +6,7 @@ Everything runs locally: no audio leaves your machine.
 
 ## Status
 
-Early scaffold. The package layout is in place, but there is no working speech recognition yet. See the milestones in [docs/architecture.md](docs/architecture.md).
+Speech to text works in the terminal: it listens to your microphone, detects when you speak, and prints what you said, on the GPU if one works and otherwise the CPU. Not built yet: live partial text while you speak, sending text into another terminal or a browser input, and spoken AI replies (the speech engine is still a mock). See the status of every feature in [docs/project-requirements.md](docs/project-requirements.md), what a machine needs in [docs/requirements.md](docs/requirements.md), and the milestones in [docs/architecture.md](docs/architecture.md).
 
 ## Setup
 
@@ -18,7 +18,7 @@ uv sync
 
 ## Configure
 
-Optional. Copy `.env.example` to `.env` and change the values (audio settings, recordings folder). Invalid values stop the app at startup with a message naming the variable and the broken rule (codes `PARLAI-E001` to `E103`, defined in `src/config/rules.py`). Allowed: sample rate 8000 or 16000, block size 256 or 512 to match, 1 channel. `PARLAI_UTTERANCE_SILENCE_MS` (default 500) is how long you must pause before the text for what you said appears: lower is faster but splits sentences at small pauses, higher waits longer. Speech recognition: `PARLAI_WHISPER_MODEL` (default `small.en`) and `PARLAI_WHISPER_DEVICE` (`auto`, `cuda` or `cpu`; `auto` uses the GPU when it works, else the CPU). The first run downloads the model from Hugging Face (about 0.5 GB for `small.en`; no audio is sent) and later runs work offline.
+Optional. Copy `.env.example` to `.env` and change the values (audio settings, recordings folder). Invalid values stop the app at startup with a message naming the variable and the broken rule (codes `PARLAI-E001` to `E103`, defined in `src/config/rules.py`). Allowed: sample rate 16000 (the voice activity detector and Whisper only take 16 kHz), block size 512 to match, 1 channel. `PARLAI_UTTERANCE_SILENCE_MS` (default 500) is how long you must pause before the text for what you said appears: lower is faster but splits sentences at small pauses, higher waits longer. Speech recognition: `PARLAI_WHISPER_MODEL` (default `small.en`) and `PARLAI_WHISPER_DEVICE` (`auto`, `cuda` or `cpu`; `auto` uses the GPU when it works, else the CPU). The first run downloads the model from Hugging Face (about 0.5 GB for `small.en`; no audio is sent) and later runs work offline.
 
 ## Run
 
@@ -41,6 +41,21 @@ Transcripts are private: at the default `INFO` level `FinalText` lines only reco
 tail -f logs/parlai.log
 jq 'select(.level != "INFO")' logs/parlai.log   # only warnings and errors
 ```
+
+## Faster recognition on an NVIDIA GPU (optional)
+
+Speech recognition runs on the CPU by default and uses a GPU automatically when one works (`PARLAI_WHISPER_DEVICE=auto`). For an NVIDIA GPU it needs NVIDIA's CUDA 12 libraries (cuBLAS and cuDNN 9), which are not part of the driver. From a source checkout:
+
+```bash
+uv sync --extra cuda
+uv run python main.py
+```
+
+The log should then say `loaded CUDA libraries from the cuda extra` and `model loaded ... device="cuda"`. The libraries are loaded inside the app only, so no `LD_LIBRARY_PATH` is needed and other programs are not affected. About 1.2 GB is downloaded once. A plain `uv sync` afterwards removes them again, so keep using `--extra cuda`.
+
+If they are missing or fail to load, the log says why and the app runs on the CPU. AMD, Intel and Apple GPUs are not supported for recognition and always use the CPU.
+
+The built binaries do not include CUDA (it is large, and like drivers it belongs to the machine). To use an NVIDIA GPU with a binary, the CUDA 12 libraries must already be findable on the machine: on Linux install cuBLAS 12 and cuDNN 9 so the system loader sees them (or start it as `LD_LIBRARY_PATH=/folder/with/the/libs ./parlai/parlai`), on Windows install them and put their `bin` folders on `PATH`. I have not tested this on Windows.
 
 ## Build a binary
 
@@ -70,10 +85,27 @@ Linux:
 - x86_64 only for now.
 
 Windows:
-- Nothing to install. The PortAudio DLL ships inside the `sounddevice` package and is bundled, since Windows has no system copy. Audio goes through Windows' own drivers.
+- Nothing to install for audio. The Microsoft Visual C++ Redistributable (x64) may be needed by the speech libraries; not verified. The PortAudio DLL ships inside the `sounddevice` package and is bundled, since Windows has no system copy. Audio goes through Windows' own drivers.
 - Microphone access must be allowed: Settings, Privacy and security, Microphone, "Let desktop apps access your microphone".
 - The exe is unsigned, so SmartScreen or an antivirus may warn about it. This is common for PyInstaller builds.
 - Device selection on Windows and macOS trusts the system default, and has not been tested there yet.
+
+### Check that a binary works
+
+Download it (from the Release page, or from the finished "Release" run's artifacts), extract it, and run it on a machine of that OS. A binary built on one OS can't be tested on another.
+
+```bash
+tar -xzf parlai-linux-x86_64.tar.gz          # Windows: unzip parlai-windows-x86_64.zip
+./parlai/parlai --mic-check                  # Windows: .\parlai\parlai.exe --mic-check
+./parlai/parlai                              # then speak; the first run downloads the model
+```
+
+What good looks like:
+- `--mic-check` lists your input devices, marks one `<- selected`, prints the levels line, and you hear your voice back.
+- The plain run prints `Speak, Ctrl-C to stop`, then each sentence you say as text.
+- `logs/parlai.log` has a `startup` line with real version numbers (not `unknown`), a `vad` line, a `model` line (`using cached model`, or `downloading` the first time), an `audio_device` line, and on Ctrl-C an `exit` line with `reason: "stopped by user"`.
+
+A crash at start with an `ImportError` means a library is missing from the bundle (a packaging bug, please report it). A PortAudio error means the system library from the list above is not installed.
 
 ## Develop
 
@@ -98,7 +130,7 @@ src/
   ai_output_capture/     read AI replies from a terminal or page (Phase 2)
 tests/
 packaging/               PyInstaller spec for the binaries
-docs/                    requirements, dependencies, architecture
+docs/                    system and project requirements, dependencies, architecture
 ```
 
 ## Security
@@ -111,6 +143,7 @@ See [SECURITY.md](SECURITY.md) for how to report a vulnerability and the design 
 
 ## Docs
 
-- [Requirements](docs/requirements.md)
+- [System requirements](docs/requirements.md) (hardware, drivers and libraries needed)
+- [Project requirements](docs/project-requirements.md) (features, status, open questions)
 - [Dependencies](docs/dependencies.md)
 - [Architecture](docs/architecture.md)

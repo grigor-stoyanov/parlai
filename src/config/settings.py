@@ -82,7 +82,7 @@ def load_settings(env: Mapping[str, str]) -> Settings:
     """
     Build Settings from environment variables, using defaults for any that are missing or empty.
 
-    If PARLAI_BLOCK_SIZE is not set, it follows the sample rate (256 at 8000 Hz, 512 at 16000 Hz).
+    If PARLAI_BLOCK_SIZE is not set, it follows the sample rate (512 at 16000 Hz).
 
     :param env: the variables to read, normally os.environ.
     :raises ConfigError: if any value is invalid; the message names every broken rule.

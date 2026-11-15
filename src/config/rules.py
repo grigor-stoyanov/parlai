@@ -21,8 +21,10 @@ DEFAULT_LOG_CONSOLE_LEVEL = "WARNING"
 DEFAULT_WHISPER_MODEL = "small.en"
 DEFAULT_WHISPER_DEVICE = "auto"
 
-ALLOWED_SAMPLE_RATES = (8000, 16000)
-BLOCK_SIZE_FOR_RATE = {8000: 256, 16000: 512}
+# Only 16 kHz: the Silero VAD model we run takes 512 samples at 16 kHz and nothing else, and
+# Whisper expects 16 kHz audio.
+ALLOWED_SAMPLE_RATES = (16000,)
+BLOCK_SIZE_FOR_RATE = {16000: 512}
 ALLOWED_CHANNELS = (1,)
 ALLOWED_WHISPER_DEVICES = ("auto", "cuda", "cpu")
 ALLOWED_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
@@ -48,11 +50,11 @@ NOT_A_POSITIVE_GAIN = Rule(
 NOT_A_FOLDER = Rule("PARLAI-E002", "must be a folder, not a file")
 SAMPLE_RATE = Rule(
     "PARLAI-E101",
-    "must be {allowed}: the only rates silero-vad accepts, and standard for audio drivers",
+    "must be {allowed}: the only rate the voice activity detector and Whisper accept",
 )
 BLOCK_SIZE = Rule(
     "PARLAI-E102",
-    "must be {required} at {rate} Hz: the exact block size silero-vad takes at that rate",
+    "must be {required} at {rate} Hz: the exact block size the voice activity detector takes",
 )
 CHANNELS = Rule(
     "PARLAI-E103",
@@ -85,5 +87,5 @@ LOG_FORMAT = Rule(
 
 
 def join_with_or(values: tuple[int | str, ...]) -> str:
-    """Format allowed values for a message, for example '8000 or 16000'."""
+    """Format allowed values for a message, for example 'auto or cuda or cpu'."""
     return " or ".join(str(value) for value in values)

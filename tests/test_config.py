@@ -24,8 +24,8 @@ def test_defaults_when_nothing_is_set():
 
 def test_valid_env_values_override_the_defaults():
     env = {
-        "PARLAI_SAMPLE_RATE": "8000",
-        "PARLAI_BLOCK_SIZE": "256",
+        "PARLAI_SAMPLE_RATE": "16000",
+        "PARLAI_BLOCK_SIZE": "512",
         "PARLAI_CHANNELS": "1",
         "PARLAI_RECORDINGS_DIR": "/tmp/audio",
     }
@@ -33,8 +33,8 @@ def test_valid_env_values_override_the_defaults():
     settings = load_settings(env)
 
     assert settings == Settings(
-        sample_rate=8000,
-        block_size=256,
+        sample_rate=16000,
+        block_size=512,
         channels=1,
         recordings_dir=Path("/tmp/audio"),
     )
@@ -54,9 +54,16 @@ def test_unsupported_sample_rate_is_rejected_with_e101_and_lists_the_allowed_val
 
     assert "PARLAI-E101" in message
     assert "PARLAI_SAMPLE_RATE" in message
-    assert "8000" in message
     assert "16000" in message
     assert "44100" in message
+
+
+@pytest.mark.parametrize("rate", ["8000", "22050", "48000"])
+def test_only_16000_hz_is_accepted_because_the_vad_and_whisper_need_it(rate):
+    message = message_for({"PARLAI_SAMPLE_RATE": rate})
+
+    assert "PARLAI-E101" in message
+    assert rate in message
 
 
 def test_more_than_one_channel_is_rejected_with_e103():
@@ -68,7 +75,7 @@ def test_more_than_one_channel_is_rejected_with_e103():
 
 @pytest.mark.parametrize(
     "rate, block",
-    [("16000", "256"), ("16000", "480"), ("8000", "512")],
+    [("16000", "256"), ("16000", "480"), ("16000", "1024")],
 )
 def test_block_size_must_match_the_sample_rate_e102(rate, block):
     message = message_for({"PARLAI_SAMPLE_RATE": rate, "PARLAI_BLOCK_SIZE": block})
@@ -78,9 +85,9 @@ def test_block_size_must_match_the_sample_rate_e102(rate, block):
 
 
 def test_block_size_message_says_which_size_the_rate_requires():
-    message = message_for({"PARLAI_SAMPLE_RATE": "8000", "PARLAI_BLOCK_SIZE": "512"})
+    message = message_for({"PARLAI_SAMPLE_RATE": "16000", "PARLAI_BLOCK_SIZE": "256"})
 
-    assert "256" in message
+    assert "512" in message
 
 
 def test_block_size_is_not_checked_when_the_sample_rate_itself_is_invalid():
@@ -108,5 +115,4 @@ def test_recordings_dir_that_is_a_file_is_rejected_with_e002(tmp_path):
 
 
 def test_block_size_follows_the_sample_rate_when_it_is_not_set():
-    assert load_settings({"PARLAI_SAMPLE_RATE": "8000"}).block_size == 256
     assert load_settings({"PARLAI_SAMPLE_RATE": "16000"}).block_size == 512

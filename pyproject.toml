@@ -13,6 +13,13 @@ dependencies = [
     "sounddevice>=0.5.6",
 ]
 
+[project.optional-dependencies]
+# NVIDIA's CUDA 12 libraries, only needed to run Whisper on an NVIDIA GPU: uv sync --extra cuda
+cuda = [
+    "nvidia-cublas-cu12; sys_platform == 'linux' or sys_platform == 'win32'",
+    "nvidia-cudnn-cu12==9.*; sys_platform == 'linux' or sys_platform == 'win32'",
+]
+
 [dependency-groups]
 dev = [
     "pyinstaller>=6.22.3",
