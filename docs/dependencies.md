@@ -13,7 +13,7 @@
 | Config/CLI | stdlib `argparse` for now | Swap to `typer` only if the CLI grows |
 | Tests | `pytest` | |
 | Packaging (dev) | `pyinstaller` | Bundles Python and the app for users without Python. Build per OS, no cross-compiling. Alternatives: Nuitka (slower builds), cx_Freeze (fewer audio hooks) |
-| CI builds | GitHub Actions | Builds the Windows and Linux binaries on their own OS runners (`.github/workflows/build.yml`) |
+| CI builds | GitHub Actions | Builds the Windows and Linux binaries on their own OS runners (`.github/workflows/release.yml`, run manually) |
 
 System packages (Arch): `portaudio`, `pipewire-alsa`, optionally CUDA/`cudnn` for GPU. Built binaries do not bundle system sound libraries or drivers; per-OS requirements are in the README.
 

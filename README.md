@@ -38,7 +38,13 @@ uv run pyinstaller --noconfirm --distpath dist --workpath build packaging/parlai
 dist/parlai/parlai --mic-check
 ```
 
-GitHub Actions builds both Windows and Linux when you push a `v*` tag or run the "Build binaries" workflow by hand; the results are downloadable artifacts.
+Binaries are built and released by one manual GitHub Actions workflow, "Release". Nothing is built on push.
+
+1. Tag the commit you want to release and push the tag: `git tag v0.1.0 && git push origin v0.1.0`.
+2. In the Actions tab, run "Release" and enter the tag. Tick Linux and/or Windows to choose what gets built.
+3. The workflow builds the ticked ones from that tag and publishes a GitHub Release with `parlai-linux-x86_64.tar.gz` and/or `parlai-windows-x86_64.zip` attached.
+
+It stops with a message if the tag doesn't exist or nothing is ticked. If a release for the tag already exists, delete it first.
 
 ### What the binary needs on the machine
 

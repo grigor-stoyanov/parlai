@@ -110,7 +110,7 @@ Each new package must be added to `packages = [...]` under `[tool.hatch.build.ta
 PyInstaller (a dev-only dependency) bundles Python and the app into a folder you can run without installing anything but the system sound libraries (see the README for what each OS needs). It cannot cross-compile, so each OS builds on its own OS.
 
 - Local build: `uv run pyinstaller --noconfirm --distpath dist --workpath build packaging/parlai.spec`, then run `dist/parlai/parlai`.
-- CI: `.github/workflows/build.yml` builds Windows (`windows-latest`) and Linux (`ubuntu-22.04`) on a `v*` tag or a manual run, and uploads each as an artifact.
+- CI: `.github/workflows/release.yml` is the only workflow and is manual. You give it an existing tag and tick Linux and/or Windows. A `plan` job checks the tag exists and builds the matrix from the ticked boxes, `build` makes each binary from that tag on its own OS (`ubuntu-22.04`, `windows-latest`), and `release` creates the GitHub Release with the archives attached.
 - The Linux build is made on Ubuntu 22.04 on purpose: a binary needs a glibc at least as old as the target, and a build on a rolling distro such as Arch would not start on older Debian.
 - `packaging/parlai.spec` strips the system sound libraries (`libportaudio`, `libasound`, `libjack`, `libdb`) from the Linux bundle, so the app uses the user's own audio stack. Windows keeps the PortAudio DLL because it ships inside the `sounddevice` wheel and Windows has no system copy.
 

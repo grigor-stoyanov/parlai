@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and release, for example v0.1.0"
+        required: true
+        type: string
+      linux:
+        description: "Build and attach the Linux binary"
+        type: boolean
+        default: true
+      windows:
+        description: "Build and attach the Windows binary"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag }}
+      LINUX: ${{ inputs.linux }}
+      WINDOWS: ${{ inputs.windows }}
+    steps:
+      - id: pick
+        run: |
+          if ! gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" > /dev/null; then
+            echo "Tag $TAG does not exist. Create and push it first."
+            exit 1
+          fi
+          items=()
+          if [ "$LINUX" = "true" ]; then
+            items+=('{"os":"ubuntu-22.04","archive":"parlai-linux-x86_64.tar.gz"}')
+          fi
+          if [ "$WINDOWS" = "true" ]; then
+            items+=('{"os":"windows-latest","archive":"parlai-windows-x86_64.zip"}')
+          fi
+          if [ ${#items[@]} -eq 0 ]; then
+            echo "Nothing selected: tick at least one of Linux or Windows."
+            exit 1
+          fi
+          echo "matrix={\"include\":[$(IFS=,; echo "${items[*]}")]}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    strategy:
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    # Linux is built on the oldest glibc we support (Debian 12, Ubuntu 22.04+).
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+      - if: runner.os == 'Linux'
+        # Needed only so Python can import sounddevice during the build; it is not bundled.
+        run: sudo apt-get update && sudo apt-get install -y libportaudio2
+      - run: uv run pyinstaller --noconfirm --distpath dist --workpath build packaging/parlai.spec
+      - if: runner.os == 'Linux'
+        run: tar -czf ${{ matrix.archive }} -C dist parlai
+      - if: runner.os == 'Windows'
+        run: Compress-Archive -Path dist/parlai -DestinationPath ${{ matrix.archive }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - run: gh release create "$TAG" artifacts/* --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
