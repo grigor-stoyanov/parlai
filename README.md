@@ -29,6 +29,19 @@ uv run python main.py --mic-check   # record 5 seconds and play it back
 
 Plain `python3 main.py` won't work, because the system Python can't see the project's virtual environment. In PyCharm, set the interpreter to `.venv`.
 
+## Logs
+
+Everything is logged to `logs/parlai.log` (folder set by `PARLAI_LOG_DIR`, name by `PARLAI_LOG_NAME`) as one JSON object per line. Set `PARLAI_LOG_FORMAT=text` for plain readable lines instead. Every line has a `time`, `level`, `source` (which module wrote it) and `label` (what kind of line: `startup`, `vad`, `model`, `audio_device`, `SpeechStart`, `SpeechEnd`, `FinalText`, `error`, `exit`). At midnight the file is renamed `parlai-YYYY-MM-DD.log`. Libraries that log every request, such as the model downloader, are turned down to warnings; the list is `PARLAI_LOG_QUIET_LOGGERS` (a comma-separated list of logger names, or `none`). Files older than `PARLAI_LOG_KEEP_DAYS` (default 14) are deleted, and the oldest are deleted first whenever the folder grows past `PARLAI_LOG_MAX_MB` (default 50). The terminal shows warnings and errors; change that with `PARLAI_LOG_CONSOLE_LEVEL` (`DEBUG`, `INFO`, `WARNING`, `ERROR` or `OFF`).
+
+A run logs its version, Python and library versions and settings at startup, whether the speech model came from the cache or was downloaded, which devices were chosen, every speech event, any crash with its traceback, and why it exited.
+
+Transcripts are private: at the default `INFO` level `FinalText` lines only record the number of characters. `PARLAI_LOG_LEVEL=DEBUG` adds the text, so use it only while debugging. Raw audio is never logged.
+
+```bash
+tail -f logs/parlai.log
+jq 'select(.level != "INFO")' logs/parlai.log   # only warnings and errors
+```
+
 ## Build a binary
 
 For testing on machines without Python. PyInstaller can't cross-compile, so build on the OS you target:
@@ -77,6 +90,7 @@ main.py                  main loop that wires the packages together
 src/
   config/                settings from PARLAI_* environment variables, checked at startup
   sound_utils/           shared microphone and speaker classes, device choice, gain, wav
+  event_logger/          JSON log lines (events, startup, errors, exit) in daily files
   speech_to_text/        recogniser on the microphone, voice activity detection, Whisper
   event_bus/             small thread-safe bus the packages talk through
   text_delivery/         send text to a terminal (PTY) or browser input

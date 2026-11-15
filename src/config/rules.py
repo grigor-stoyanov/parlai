@@ -10,6 +10,14 @@ DEFAULT_SAMPLE_RATE = 16000
 DEFAULT_BLOCK_SIZE = 512
 DEFAULT_CHANNELS = 1
 DEFAULT_UTTERANCE_SILENCE_MS = 500
+DEFAULT_LOG_MAX_MB = 50
+DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_LOG_KEEP_DAYS = 14
+DEFAULT_LOG_NAME = "parlai"
+DEFAULT_LOG_FORMAT = "json"
+# These log every HTTP request, which would bury our own lines while a model downloads.
+DEFAULT_QUIET_LOGGERS = ("httpx", "httpcore", "urllib3", "huggingface_hub", "filelock")
+DEFAULT_LOG_CONSOLE_LEVEL = "WARNING"
 DEFAULT_WHISPER_MODEL = "small.en"
 DEFAULT_WHISPER_DEVICE = "auto"
 
@@ -17,6 +25,10 @@ ALLOWED_SAMPLE_RATES = (8000, 16000)
 BLOCK_SIZE_FOR_RATE = {8000: 256, 16000: 512}
 ALLOWED_CHANNELS = (1,)
 ALLOWED_WHISPER_DEVICES = ("auto", "cuda", "cpu")
+ALLOWED_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
+ALLOWED_CONSOLE_LEVELS = (*ALLOWED_LOG_LEVELS, "OFF")
+ALLOWED_LOG_FORMATS = ("json", "text")
+LOG_NAME_PATTERN = r"[A-Za-z0-9_-]+"
 
 
 @dataclass(frozen=True)
@@ -50,6 +62,25 @@ CHANNELS = Rule(
 WHISPER_DEVICE = Rule(
     "PARLAI-E201",
     "must be {allowed}: auto uses the GPU if one works, else the CPU",
+)
+
+LOG_LEVEL = Rule(
+    "PARLAI-E301",
+    "must be {allowed}: DEBUG also logs the recognised text, which is private",
+)
+
+LOG_CONSOLE_LEVEL = Rule(
+    "PARLAI-E302",
+    "must be {allowed}: the lowest level shown in the terminal, or OFF for none",
+)
+
+LOG_NAME = Rule(
+    "PARLAI-E303",
+    "must be only letters, digits, - or _: it becomes part of the log file names",
+)
+LOG_FORMAT = Rule(
+    "PARLAI-E304",
+    "must be {allowed}: json is one object per line, text is plain lines for reading",
 )
 
 

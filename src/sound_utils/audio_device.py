@@ -1,15 +1,19 @@
 """Base class for a sound device: choose it, check it opens, save audio. Subclasses: Microphone, Speaker."""
 
+import logging
 import wave
 from pathlib import Path
 
 import sounddevice as sd
 
 from config.settings import Settings
+from event_logger.json_log import log_event
 from sound_utils.audio_levels import AudioLevels
 from sound_utils.device_picker import NoAudioDeviceError, PlatformDevicePicker
 
 SAMPLE_WIDTH_BYTES = 2  # 16-bit audio
+
+logger = logging.getLogger(__name__)
 
 
 class AudioDevice(AudioLevels, PlatformDevicePicker):
@@ -49,6 +53,16 @@ class AudioDevice(AudioLevels, PlatformDevicePicker):
             raise NoAudioDeviceError(
                 f"{self.label} device {index} ({name}) can't be opened: {error}.{self.hint}"
             ) from error
+        name = sd.query_devices(index)["name"]
+        log_event(
+            logger,
+            logging.INFO,
+            "audio_device",
+            f"{self.label.lower()} device selected",
+            index=index,
+            name=name,
+            sample_rate=self.settings.sample_rate,
+        )
         return index
 
     def save_wav(self, path: Path, audio: bytes) -> None:

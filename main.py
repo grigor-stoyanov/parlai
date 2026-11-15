@@ -5,12 +5,16 @@ Run with `uv run python main.py` (or the project's .venv interpreter in PyCharm)
 
 import argparse
 import os
+import time
 
 from dotenv import load_dotenv
 
 from config.settings import ConfigError, Settings, load_settings
 from event_bus.bus import EventBus
 from event_bus.events import FinalText
+from event_logger.bus_logger import EventLogger
+from event_logger.lifecycle import log_crash, log_exit, log_startup
+from event_logger.logging_setup import setup_logging
 from speech_to_text.recognizer import SpeechRecognizer
 from text_to_speech.audio_player import AudioPlayer
 
@@ -43,23 +47,40 @@ def main(argv: list[str] | None = None) -> None:
     except ConfigError as error:
         parser.exit(2, f"parlai: invalid settings\n{error}\n")
 
-    if args.mic_check:
-        mic_check(settings)
-        return
-
-    live_bus = EventBus()
-    finals = live_bus.subscribe(FinalText)
-    live_recognizer = SpeechRecognizer(settings, live_bus)
-    print("Loading the speech model (downloads once, then works offline)...")
-    live_recognizer.prepare()
-    print("Speak, Ctrl-C to stop")
+    setup_logging(settings)
+    log_startup(settings)
+    started_at = time.monotonic()
+    reason = "finished"
+    event_log = None
     try:
-        for block in live_recognizer.blocks():
-            live_recognizer.process(block)
-            while not finals.empty():
-                print(finals.get_nowait().text)
-    except KeyboardInterrupt:
-        print()
+        if args.mic_check:
+            mic_check(settings)
+            return
+
+        live_bus = EventBus()
+        event_log = EventLogger(live_bus, include_text=settings.log_level == "DEBUG")
+        event_log.start()
+        finals = live_bus.subscribe(FinalText)
+        live_recognizer = SpeechRecognizer(settings, live_bus)
+        print("Loading the speech model (downloads once, then works offline)...")
+        live_recognizer.prepare()
+        print("Speak, Ctrl-C to stop")
+        try:
+            for block in live_recognizer.blocks():
+                live_recognizer.process(block)
+                while not finals.empty():
+                    print(finals.get_nowait().text)
+        except KeyboardInterrupt:
+            print()
+            reason = "stopped by user"
+    except Exception as error:
+        reason = "crashed"
+        log_crash(error)
+        raise
+    finally:
+        if event_log is not None:
+            event_log.stop()
+        log_exit(reason, started_at)
 
 
 if __name__ == "__main__":

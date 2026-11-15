@@ -1,14 +1,19 @@
 """Voice activity detection: says whether a block of mic audio contains speech."""
 
+import logging
 import os
 
 import numpy as np
 import onnxruntime
 from faster_whisper.utils import get_assets_path
 
+from event_logger.json_log import log_event
+
 BLOCK_SAMPLES = 512
 CONTEXT_SAMPLES = 64
 INT16_SCALE = 32768.0
+
+logger = logging.getLogger(__name__)
 
 
 class Vad:
@@ -30,6 +35,14 @@ class Vad:
             path, providers=["CPUExecutionProvider"], sess_options=options
         )
         self.threshold = threshold
+        log_event(
+            logger,
+            logging.INFO,
+            "vad",
+            "voice activity detector ready",
+            model=path,
+            threshold=threshold,
+        )
         self.h = np.zeros((1, 1, 128), dtype=np.float32)
         self.c = np.zeros((1, 1, 128), dtype=np.float32)
         # The model also looks at the last 64 samples of the previous block.

@@ -77,9 +77,10 @@ Each package does one job and does not orchestrate. The root `main.py` is the ma
 
 | Package | Job | Interface | Starts at |
 |---|---|---|---|
-| `config` | settings from environment variables (`PARLAI_*`, incl. optional `PARLAI_INPUT_DEVICE`, `PARLAI_INPUT_GAIN`, `PARLAI_PLAYBACK_GAIN`, `PARLAI_UTTERANCE_SILENCE_MS`, `PARLAI_WHISPER_MODEL`, `PARLAI_WHISPER_DEVICE`), validated at startup against coded rules in `config/rules.py` | `load_settings(env) -> Settings` | M1 |
+| `config` | settings from environment variables (`PARLAI_*`, incl. optional `PARLAI_INPUT_DEVICE`, `PARLAI_INPUT_GAIN`, `PARLAI_PLAYBACK_GAIN`, `PARLAI_UTTERANCE_SILENCE_MS`, `PARLAI_WHISPER_MODEL`, `PARLAI_WHISPER_DEVICE`, `PARLAI_LOG_DIR`, `PARLAI_LOG_LEVEL`, `PARLAI_LOG_MAX_MB`, `PARLAI_LOG_KEEP_DAYS`, `PARLAI_LOG_CONSOLE_LEVEL`, `PARLAI_LOG_NAME`, `PARLAI_LOG_FORMAT`, `PARLAI_LOG_QUIET_LOGGERS`), validated at startup against coded rules in `config/rules.py` | `load_settings(env) -> Settings` | M1 |
 | `sound_utils` | shared sound I/O: `Microphone`/`Speaker` (both an `AudioDevice`: choose + probe a device), gain and dBFS levels (`AudioLevels` mixin) and per-OS default-device rules (`DevicePicker` mixin: Linux prefers PipeWire/Pulse plugins, others trust PortAudio), `save_wav` on every device. Reused by speech_to_text and text_to_speech | `Microphone(settings).record(s)`, `Speaker(settings).play(audio)` | M1 |
 | `speech_to_text` | `SpeechRecognizer` (a `Microphone` plus the pipeline: each block goes through the `Vad` into the `UtteranceSegmenter`, audio is buffered with about 0.3 s of pre-roll, and `FinalText` is published when an utterance ends; `listen(s) -> str` for a fixed-length recording), `Vad` (Silero via onnxruntime), `WhisperEngine` (faster-whisper, GPU or CPU, model loaded and downloaded at startup via `prepare()`) | `STTEngine.transcribe_stream(audio_chunks) -> AsyncIterator[Transcript]` | M1 |
+| `event_logger` | JSON or plain-text log lines (`json_log`, `text_log`), daily files with size cleanup (`log_files`), logging setup (`logging_setup`), an `EventLogger` thread that logs every event on the bus via `subscribe_all()` (`bus_logger`), and startup/exit/crash lines (`lifecycle`). `FinalText` is logged as a character count at INFO, the text only at DEBUG | `setup_logging(settings)`, `EventLogger(bus).start()` | M1 |
 | `event_bus` | small thread-safe bus the others talk through | `publish(event)`, `subscribe()` | M3 |
 | `text_delivery` | sinks: PTY injection, WebSocket to browser | `Sink.emit(event)` | M3 |
 | `text_to_speech` | `AudioPlayer` (a `Speaker` plus the TTS engine: `speak(text)`), text cleaning | `TTSEngine.synthesize(text) -> AsyncIterator[bytes]` | M6 |
@@ -97,6 +98,7 @@ parlai/
 │   ├── sound_utils/        # audio_device (base), device_picker (choice + per-OS defaults), audio_levels (mixin), microphone, speaker
 │   ├── speech_to_text/     # recognizer, voice_activity_detection, utterance_segmenter, whisper_engine
 │   ├── event_bus/          # events, bus
+│   ├── event_logger/       # json_log, log_files, logging_setup, bus_logger, lifecycle
 │   ├── text_delivery/      # terminal_sink, websocket_sink
 │   ├── text_to_speech/     # text_cleaner, tts_engine, audio_player
 │   └── ai_output_capture/  # terminal_source, browser_source

@@ -12,3 +12,5 @@ models/
 TODO.md
 build/
 dist/
+
+logs/

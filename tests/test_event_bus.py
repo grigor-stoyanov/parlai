@@ -1,5 +1,5 @@
 from event_bus.bus import EventBus
-from event_bus.events import FinalText, PartialText
+from event_bus.events import FinalText, PartialText, SpeechStart
 
 
 def test_subscriber_gets_published_event():
@@ -44,3 +44,23 @@ def test_events_arrive_in_order():
 
 def test_publish_without_subscribers_is_fine():
     EventBus().publish(FinalText("nobody is listening"))
+
+
+def test_subscribe_all_receives_events_of_every_type():
+    bus = EventBus()
+    everything = bus.subscribe_all()
+
+    bus.publish(FinalText("hello"))
+    bus.publish(SpeechStart())
+
+    assert [everything.get_nowait(), everything.get_nowait()] == [FinalText("hello"), SpeechStart()]
+
+
+def test_subscribe_all_does_not_stop_type_subscribers_getting_their_events():
+    bus = EventBus()
+    finals = bus.subscribe(FinalText)
+    bus.subscribe_all()
+
+    bus.publish(FinalText("hello"))
+
+    assert finals.get_nowait() == FinalText("hello")

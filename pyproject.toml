@@ -30,6 +30,7 @@ packages = [
     "src/speech_to_text",
     "src/sound_utils",
     "src/event_bus",
+    "src/event_logger",
     "src/text_delivery",
     "src/text_to_speech",
     "src/ai_output_capture",
